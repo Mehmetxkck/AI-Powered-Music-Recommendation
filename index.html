@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Music Discovery</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+        integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
+</head>
+
+<body>
+    <header>
+        <div id="user-profile">
+            <img id="user-image" src="" alt="User Profile Image">
+            <h2 id="user-name"></h2>
+        </div>
+        <a href="http://127.0.0.1:5000/login" class="spotify-login-button">
+            <i class="fab fa-spotify"></i> Login with Spotify
+        </a>
+    </header>
+
+    <main>
+        <section id="mood-selection">
+            <h2>Select Your Mood</h2>
+            <div class="mood-container">
+                <button class="mood-button" data-mood="happy">
+                    <i class="fas fa-smile"></i> Happy
+                </button>
+                <button class="mood-button" data-mood="sad">
+                    <i class="fas fa-sad-tear"></i> Sad
+                </button>
+                <button class="mood-button" data-mood="energetic">
+                    <i class="fas fa-bolt"></i> Energetic
+                </button>
+                <button class="mood-button" data-mood="calm">
+                    <i class="fas fa-leaf"></i> Calm
+                </button>
+            </div>
+        </section>
+
+        <section id="recommendations-section">
+            <h2>Recommended Tracks</h2>
+            <div id="recommendations-container">
+            </div>
+        </section>
+    </main>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
