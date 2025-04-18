@@ -1,0 +1,237 @@
+/* Genel Stiller */
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #f4f4f4;
+    color: #333;
+    line-height: 1.6;
+}
+
+header {
+    background-color: #1DB954;
+    /* Spotify Green */
+    color: #fff;
+    padding: 1rem 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+#user-profile {
+    display: flex;
+    align-items: center;
+}
+
+#user-image {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    margin-right: 15px;
+    border: 2px solid #fff;
+}
+
+#user-name {
+    margin: 0;
+    font-size: 1.4em;
+}
+
+.spotify-login-button {
+    background-color: #191414;
+    /* Spotify Black */
+    color: #fff;
+    padding: 10px 20px;
+    border-radius: 50px;
+    text-decoration: none;
+    font-weight: bold;
+    display: inline-flex;
+    align-items: center;
+    transition: background-color 0.3s ease;
+}
+
+.spotify-login-button i {
+    margin-right: 8px;
+    font-size: 1.2em;
+}
+
+.spotify-login-button:hover {
+    background-color: #333;
+}
+
+main {
+    padding: 20px;
+    max-width: 900px;
+    margin: 20px auto;
+    background-color: #fff;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+}
+
+/* Mood Seçimi Stilleri Kaldırıldı */
+/* #mood-selection { ... } */
+/* .mood-buttons-container { ... } */
+/* .mood-button { ... } */
+/* .mood-button:hover { ... } */
+/* .mood-button i { ... } */
+
+/* Şarkı Öneri Butonu Stilleri */
+#recommendation-trigger {
+    text-align: center;
+    /* Butonu ortalamak için */
+    margin-bottom: 30px;
+}
+
+#getRecommendationsBtn {
+    background-color: #1DB954;
+    /* Spotify Green */
+    color: white;
+    border: none;
+    border-radius: 50px;
+    padding: 15px 30px;
+    font-size: 1.2em;
+    cursor: pointer;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+    display: inline-flex;
+    /* İkonla metni hizalamak için */
+    align-items: center;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+#getRecommendationsBtn i {
+    margin-right: 10px;
+}
+
+#getRecommendationsBtn:hover {
+    background-color: #1aa34a;
+    transform: translateY(-2px);
+    /* Hafif yukarı kalkma efekti */
+}
+
+#getRecommendationsBtn:active {
+    transform: translateY(0);
+    /* Tıklama anında efekti sıfırla */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+
+/* Öneri Bölümü Stilleri */
+#recommendations-section {
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid #eee;
+}
+
+#recommendations-section h2 {
+    text-align: center;
+    color: #1DB954;
+    margin-bottom: 20px;
+}
+
+#recommendations-container {
+    background-color: #f9f9f9;
+    padding: 15px;
+    border-radius: 5px;
+    min-height: 100px;
+    /* İçerik yokken bile bir alan kaplasın */
+}
+
+#recommendations-container p {
+    text-align: center;
+    color: #666;
+}
+
+#recommendations-container ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+#recommendations-container li {
+    background-color: #fff;
+    margin-bottom: 15px;
+    padding: 15px;
+    border-radius: 5px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    display: flex;
+    /* İçeriği daha iyi hizalamak için */
+    align-items: center;
+    flex-wrap: wrap;
+    /* Küçük ekranlarda alt satıra geçsin */
+}
+
+#recommendations-container li img {
+    width: 60px;
+    /* Albüm kapağı boyutu */
+    height: 60px;
+    border-radius: 4px;
+    margin-right: 15px;
+    object-fit: cover;
+    /* Resim oranını koru */
+}
+
+#recommendations-container li div {
+    flex-grow: 1;
+    /* Kalan alanı doldur */
+}
+
+#recommendations-container li strong {
+    display: block;
+    /* Başlık alt satıra geçsin */
+    font-size: 1.1em;
+    margin-bottom: 3px;
+}
+
+#recommendations-container li span {
+    /* Sanatçı adı */
+    color: #555;
+    display: block;
+    margin-bottom: 8px;
+}
+
+
+#recommendations-container li a {
+    color: #1DB954;
+    text-decoration: none;
+    font-weight: bold;
+    margin-left: 10px;
+    /* Diğer içerikten biraz ayır */
+    white-space: nowrap;
+    /* Linkin bölünmesini engelle */
+}
+
+#recommendations-container li a:hover {
+    text-decoration: underline;
+}
+
+#recommendations-container audio {
+    margin-top: 10px;
+    height: 35px;
+    /* Kontrol yüksekliği */
+    width: 100%;
+    /* Konteyner genişliğine uysun */
+    max-width: 300px;
+    /* Çok geniş olmasın */
+    display: block;
+    /* Alt satıra geçsin */
+}
+
+/* Yükleniyor Mesajı Stili (Opsiyonel) */
+.loading {
+    text-align: center;
+    padding: 20px;
+    font-style: italic;
+    color: #888;
+}
+
+/* Hata Mesajı Stili (Opsiyonel) */
+.error {
+    color: #d9534f;
+    /* Kırmızı tonu */
+    font-weight: bold;
+    text-align: center;
+    padding: 10px;
+    background-color: #f2dede;
+    border: 1px solid #ebccd1;
+    border-radius: 4px;
+}

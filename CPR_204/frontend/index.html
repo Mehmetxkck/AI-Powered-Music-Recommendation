@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Music Discovery</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+</head>
+
+<body>
+    <header>
+        <div id="user-profile">
+            <!-- Kullanıcı profil resmi ve adı JavaScript ile yüklenecek -->
+            <img id="user-image" src="" alt="User Profile Image" style="display: none;"> <!-- Başlangıçta gizli -->
+            <h2 id="user-name">Welcome, Guest</h2>
+        </div>
+        <!-- Spotify login butonu JavaScript ile gizlenip gösterilecek -->
+        <a href="http://127.0.0.1:5000/login" id="login-button" class="spotify-login-button">
+            <i class="fab fa-spotify"></i> Login with Spotify
+        </a>
+        <!-- Çıkış butonu (isteğe bağlı, JavaScript ile eklenebilir) -->
+        <!-- <button id="logout-button" style="display: none;">Logout</button> -->
+    </header>
+
+    <main>
+        <!-- Mood seçimi bölümü kaldırıldı -->
+        <!-- <section id="mood-selection"> ... </section> -->
+
+        <!-- Şarkı Öneri Butonu Bölümü -->
+        <section id="recommendation-trigger">
+            <!-- Bu buton sadece kullanıcı giriş yaptıktan sonra gösterilmeli (JavaScript ile) -->
+            <button id="getRecommendationsBtn"
+                style="display: none; margin: 20px auto; padding: 15px 30px; font-size: 1.2em; cursor: pointer;">
+                <i class="fas fa-music"></i> Bana Şarkı Öner!
+            </button>
+        </section>
+
+        <!-- Öneri Bölümü -->
+        <section id="recommendations-section">
+            <h2>Sana Özel Öneriler</h2> <!-- Başlık güncellendi -->
+            <div id="recommendations-container">
+                <!-- Öneriler JavaScript ile buraya yüklenecek -->
+                <p>Önerileri görmek için butona tıkla.</p>
+            </div>
+        </section>
+    </main>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
