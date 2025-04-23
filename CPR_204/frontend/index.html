@@ -1,51 +1,89 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="tr"> <!-- Dil Türkçe olarak ayarlandı -->
 
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Music Discovery</title>
+    <title>Müzik Keşfet</title> <!-- Başlık Türkçeleştirildi -->
     <link rel="stylesheet" href="styles.css">
+    <!-- Font Awesome ikonları için link -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
 </head>
 
 <body>
     <header>
-        <div id="user-profile">
-            <!-- Kullanıcı profil resmi ve adı JavaScript ile yüklenecek -->
-            <img id="user-image" src="" alt="User Profile Image" style="display: none;"> <!-- Başlangıçta gizli -->
-            <h2 id="user-name">Welcome, Guest</h2>
+        <!-- Kullanıcı Bilgisi Alanı -->
+        <div id="user-info" style="display: none;"> <!-- Başlangıçta gizli -->
+            <!-- Kullanıcı adı ve resmi JS ile yüklenecek -->
         </div>
-        <!-- Spotify login butonu JavaScript ile gizlenip gösterilecek -->
-        <a href="http://127.0.0.1:5000/login" id="login-button" class="spotify-login-button">
-            <i class="fab fa-spotify"></i> Login with Spotify
-        </a>
-        <!-- Çıkış butonu (isteğe bağlı, JavaScript ile eklenebilir) -->
-        <!-- <button id="logout-button" style="display: none;">Logout</button> -->
+
+        <!-- Kontrol Butonları -->
+        <div class="controls">
+            <!-- Login Butonu -->
+            <a href="#" id="login-button" class="spotify-login-button"> <!-- href="#" JS ile yönetilecek -->
+                <i class="fab fa-spotify"></i> Spotify ile Giriş Yap
+            </a>
+            <!-- Profil Butonu (Giriş yapınca görünür) -->
+            <button id="show-profile-button" style="display: none;" class="control-button">
+                <i class="fas fa-user"></i> Profilim
+            </button>
+            <!-- Çıkış Butonu (Giriş yapınca görünür) -->
+            <button id="logout-button" style="display: none;" class="control-button">
+                <i class="fas fa-sign-out-alt"></i> Çıkış Yap
+            </button>
+        </div>
     </header>
 
-    <main>
-        <!-- Mood seçimi bölümü kaldırıldı -->
-        <!-- <section id="mood-selection"> ... </section> -->
+    <!-- Yükleme Göstergesi -->
+    <div id="loading" style="display: none; text-align: center; padding: 20px;">
+        <i class="fas fa-spinner fa-spin fa-2x"></i> Yükleniyor...
+    </div>
 
-        <!-- Şarkı Öneri Butonu Bölümü -->
-        <section id="recommendation-trigger">
-            <!-- Bu buton sadece kullanıcı giriş yaptıktan sonra gösterilmeli (JavaScript ile) -->
-            <button id="getRecommendationsBtn"
-                style="display: none; margin: 20px auto; padding: 15px 30px; font-size: 1.2em; cursor: pointer;">
-                <i class="fas fa-music"></i> Bana Şarkı Öner!
-            </button>
-        </section>
+    <!-- Hata Mesajı Alanı -->
+    <div id="error-message"
+        style="display: none; color: #e74c3c; background-color: #fbeae5; border: 1px solid #e74c3c; padding: 15px; margin: 15px; border-radius: 5px; text-align: center;">
+        <!-- Hata mesajı buraya JS ile eklenecek -->
+    </div>
 
-        <!-- Öneri Bölümü -->
-        <section id="recommendations-section">
-            <h2>Sana Özel Öneriler</h2> <!-- Başlık güncellendi -->
-            <div id="recommendations-container">
-                <!-- Öneriler JavaScript ile buraya yüklenecek -->
-                <p>Önerileri görmek için butona tıkla.</p>
-            </div>
-        </section>
-    </main>
+    <!-- Ana İçerik Bölümü (Profil gösterildiğinde gizlenecek) -->
+    <div id="main-content">
+        <main>
+            <!-- Başlangıç Önerileri (Giriş yapılmadığında görünür) -->
+            <section id="initial-recommendations-section" style="display: none;">
+                <!-- Başlangıçta gizli, JS kontrol edecek -->
+                <h2>Hoş Geldin! İşte Bazı Öneriler</h2>
+                <div id="initial-recommendations" class="recommendations-grid">
+                    <!-- Başlangıç önerileri buraya yüklenecek -->
+                </div>
+            </section>
+
+            <!-- Şarkı Öneri Butonu Bölümü (Giriş yapınca görünür) -->
+            <section id="recommendation-trigger">
+                <button id="get-recommendations-button" style="display: none;" class="action-button">
+                    <i class="fas fa-music"></i> Bana Şarkı Öner!
+                </button>
+            </section>
+
+            <!-- Kişisel Öneri Bölümü (Giriş yapınca ve butona tıklanınca dolar) -->
+            <section id="recommendations-section">
+                <h2>Sana Özel Öneriler</h2>
+                <div id="recommendations" class="recommendations-grid">
+                    <!-- Kişisel öneriler buraya yüklenecek -->
+                    <p>Önerileri görmek için giriş yapıp butona tıkla.</p>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Profil Bölümü (Başlangıçta gizli) -->
+    <section id="profile-section" style="display: none;">
+        <!-- Profil içeriği JavaScript ile buraya yüklenecek -->
+    </section>
+
+    <footer>
+        <!-- İsteğe bağlı alt bilgi -->
+        <p>&copy; 2024 Müzik Keşfet</p>
+    </footer>
 
     <script src="script.js"></script>
 </body>
