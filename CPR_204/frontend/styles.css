@@ -1,237 +1,488 @@
 /* Genel Stiller */
+:root {
+    --spotify-green: #1DB954;
+    --spotify-black: #191414;
+    --spotify-white: #ffffff;
+    --light-gray: #f4f4f4;
+    --medium-gray: #ccc;
+    --dark-gray: #333;
+    --text-color: #333;
+    --card-bg: #ffffff;
+    --container-bg: #ffffff;
+    --border-color: #eee;
+    --shadow-light: rgba(0, 0, 0, 0.05);
+    --shadow-medium: rgba(0, 0, 0, 0.1);
+    --error-red: #e74c3c;
+    --error-bg: #fbeae5;
+}
+
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     margin: 0;
     padding: 0;
-    background-color: #f4f4f4;
-    color: #333;
+    background-color: var(--light-gray);
+    color: var(--text-color);
     line-height: 1.6;
 }
 
+/* Header Stilleri */
 header {
-    background-color: #1DB954;
-    /* Spotify Green */
-    color: #fff;
+    background-color: var(--spotify-green);
+    color: var(--spotify-white);
     padding: 1rem 2rem;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 5px var(--shadow-medium);
+    position: sticky;
+    /* İsteğe bağlı: Header'ı yukarı sabitle */
+    top: 0;
+    z-index: 100;
 }
 
-#user-profile {
+#user-info {
+    /* JS ile içerik eklendiğinde görünür olacak */
+    font-weight: bold;
+}
+
+.controls {
     display: flex;
     align-items: center;
+    gap: 15px;
+    /* Butonlar arası boşluk */
 }
 
-#user-image {
-    width: 50px;
-    height: 50px;
-    border-radius: 50%;
-    margin-right: 15px;
-    border: 2px solid #fff;
-}
-
-#user-name {
-    margin: 0;
-    font-size: 1.4em;
-}
-
-.spotify-login-button {
-    background-color: #191414;
-    /* Spotify Black */
-    color: #fff;
+.spotify-login-button,
+.control-button,
+.action-button {
+    /* Ortak buton stilleri */
     padding: 10px 20px;
     border-radius: 50px;
     text-decoration: none;
     font-weight: bold;
     display: inline-flex;
     align-items: center;
-    transition: background-color 0.3s ease;
+    justify-content: center;
+    cursor: pointer;
+    border: none;
+    transition: background-color 0.3s ease, transform 0.2s ease, box-shadow 0.2s ease;
+    white-space: nowrap;
+    /* Buton metninin bölünmesini engelle */
 }
 
-.spotify-login-button i {
-    margin-right: 8px;
-    font-size: 1.2em;
+.spotify-login-button {
+    background-color: var(--spotify-black);
+    color: var(--spotify-white);
 }
 
 .spotify-login-button:hover {
-    background-color: #333;
+    background-color: var(--dark-gray);
 }
 
-main {
+.control-button {
+    background-color: var(--spotify-white);
+    color: var(--spotify-green);
+    border: 1px solid var(--spotify-green);
+}
+
+.control-button:hover {
+    background-color: var(--light-gray);
+    color: var(--spotify-black);
+}
+
+.action-button {
+    /* Ana eylem butonu (Şarkı Öner) */
+    background-color: var(--spotify-green);
+    color: var(--spotify-white);
+    font-size: 1.1em;
+    /* Biraz daha büyük */
+    padding: 12px 25px;
+    box-shadow: 0 4px 6px var(--shadow-medium);
+}
+
+.action-button:hover {
+    background-color: #1aa34a;
+    /* Biraz daha koyu yeşil */
+    transform: translateY(-2px);
+    box-shadow: 0 6px 8px var(--shadow-medium);
+}
+
+.action-button:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 4px var(--shadow-medium);
+}
+
+.spotify-login-button i,
+.control-button i,
+.action-button i {
+    margin-right: 8px;
+    font-size: 1.1em;
+}
+
+/* Ana İçerik ve Bölümler */
+#main-content,
+#profile-section {
     padding: 20px;
-    max-width: 900px;
-    margin: 20px auto;
-    background-color: #fff;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    max-width: 1100px;
+    /* Biraz daha geniş */
+    margin: 30px auto;
+    background-color: var(--container-bg);
+    box-shadow: 0 0 10px var(--shadow-medium);
     border-radius: 8px;
 }
 
-/* Mood Seçimi Stilleri Kaldırıldı */
-/* #mood-selection { ... } */
-/* .mood-buttons-container { ... } */
-/* .mood-button { ... } */
-/* .mood-button:hover { ... } */
-/* .mood-button i { ... } */
-
-/* Şarkı Öneri Butonu Stilleri */
 #recommendation-trigger {
     text-align: center;
-    /* Butonu ortalamak için */
     margin-bottom: 30px;
 }
 
-#getRecommendationsBtn {
-    background-color: #1DB954;
-    /* Spotify Green */
-    color: white;
-    border: none;
-    border-radius: 50px;
-    padding: 15px 30px;
-    font-size: 1.2em;
-    cursor: pointer;
-    transition: background-color 0.3s ease, transform 0.2s ease;
-    display: inline-flex;
-    /* İkonla metni hizalamak için */
-    align-items: center;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-}
-
-#getRecommendationsBtn i {
-    margin-right: 10px;
-}
-
-#getRecommendationsBtn:hover {
-    background-color: #1aa34a;
-    transform: translateY(-2px);
-    /* Hafif yukarı kalkma efekti */
-}
-
-#getRecommendationsBtn:active {
-    transform: translateY(0);
-    /* Tıklama anında efekti sıfırla */
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-
-/* Öneri Bölümü Stilleri */
-#recommendations-section {
-    margin-top: 30px;
-    padding-top: 20px;
-    border-top: 1px solid #eee;
-}
-
+#initial-recommendations-section h2,
 #recommendations-section h2 {
     text-align: center;
-    color: #1DB954;
-    margin-bottom: 20px;
+    color: var(--spotify-green);
+    margin-bottom: 25px;
 }
 
-#recommendations-container {
-    background-color: #f9f9f9;
+/* Öneri Grid Yapısı */
+.recommendations-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    /* Duyarlı grid */
+    gap: 20px;
+    /* Kartlar arası boşluk */
     padding: 15px;
+    background-color: #fdfdfd;
+    /* Hafif farklı arka plan */
     border-radius: 5px;
     min-height: 100px;
-    /* İçerik yokken bile bir alan kaplasın */
 }
 
-#recommendations-container p {
+.recommendations-grid p {
+    /* İçerik yok mesajı */
+    grid-column: 1 / -1;
+    /* Tüm sütunları kapla */
     text-align: center;
     color: #666;
+    margin-top: 20px;
 }
 
-#recommendations-container ul {
-    list-style: none;
-    padding: 0;
+/* Şarkı Kartı Stilleri */
+.song-card {
+    background-color: var(--card-bg);
+    border-radius: 8px;
+    box-shadow: 0 2px 5px var(--shadow-light);
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    /* Dikey hizalama */
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.song-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 8px var(--shadow-medium);
+}
+
+.song-card .album-art {
+    width: 100%;
+    /* Kart genişliğine uysun */
+    max-width: 250px;
+    /* Çok büyümesin */
+    height: auto;
+    aspect-ratio: 1 / 1;
+    /* Kare oranını koru */
+    border-radius: 6px;
+    margin: 0 auto 15px auto;
+    /* Ortala ve altta boşluk */
+    object-fit: cover;
+    display: block;
+}
+
+.song-card .song-info {
+    text-align: center;
+    /* Metinleri ortala */
+    flex-grow: 1;
+    /* Aksiyonlar alta itsin */
+    margin-bottom: 15px;
+}
+
+.song-card .title {
+    font-size: 1.1em;
+    font-weight: bold;
+    margin: 0 0 5px 0;
+    color: var(--dark-gray);
+}
+
+.song-card .artist {
+    font-size: 0.95em;
+    color: #555;
     margin: 0;
 }
 
-#recommendations-container li {
-    background-color: #fff;
-    margin-bottom: 15px;
-    padding: 15px;
-    border-radius: 5px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+.song-card .song-actions {
     display: flex;
-    /* İçeriği daha iyi hizalamak için */
+    justify-content: center;
+    /* Butonları ortala */
     align-items: center;
-    flex-wrap: wrap;
-    /* Küçük ekranlarda alt satıra geçsin */
+    gap: 10px;
+    /* Butonlar arası boşluk */
+    margin-top: auto;
+    /* En alta itsin */
+    padding-top: 10px;
+    border-top: 1px solid var(--border-color);
 }
 
-#recommendations-container li img {
-    width: 60px;
-    /* Albüm kapağı boyutu */
-    height: 60px;
-    border-radius: 4px;
-    margin-right: 15px;
+.song-card .action-btn {
+    background: none;
+    border: none;
+    color: var(--dark-gray);
+    font-size: 1.4em;
+    /* İkon boyutu */
+    cursor: pointer;
+    padding: 5px;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.song-card .action-btn:hover {
+    background-color: var(--light-gray);
+    color: var(--spotify-green);
+}
+
+.song-card .action-btn.disabled {
+    color: var(--medium-gray);
+    cursor: not-allowed;
+}
+
+.song-card .action-btn.disabled:hover {
+    background-color: transparent;
+    color: var(--medium-gray);
+}
+
+.song-card .spotify-link-btn {
+    /* Spotify linki için özel stil */
+    color: var(--dark-gray);
+    text-decoration: none;
+}
+
+.song-card .spotify-link-btn:hover {
+    color: var(--spotify-green);
+    background-color: var(--light-gray);
+}
+
+.song-card .preview-audio {
+    display: none;
+    /* Ses kontrolünü gizle, butonla yöneteceğiz */
+}
+
+/* Profil Bölümü Stilleri */
+#profile-section {
+    /* Genel container stili yukarıda tanımlı */
+}
+
+.profile-header {
+    text-align: center;
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.profile-pic {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    margin-bottom: 15px;
+    border: 3px solid var(--spotify-green);
     object-fit: cover;
-    /* Resim oranını koru */
 }
 
-#recommendations-container li div {
-    flex-grow: 1;
-    /* Kalan alanı doldur */
+.profile-header h2 {
+    margin: 10px 0 5px 0;
+    font-size: 1.8em;
 }
 
-#recommendations-container li strong {
-    display: block;
-    /* Başlık alt satıra geçsin */
-    font-size: 1.1em;
-    margin-bottom: 3px;
-}
-
-#recommendations-container li span {
-    /* Sanatçı adı */
+.profile-header p {
+    margin: 5px 0;
     color: #555;
-    display: block;
-    margin-bottom: 8px;
 }
 
-
-#recommendations-container li a {
-    color: #1DB954;
+.profile-header a {
+    color: var(--spotify-green);
     text-decoration: none;
     font-weight: bold;
-    margin-left: 10px;
-    /* Diğer içerikten biraz ayır */
-    white-space: nowrap;
-    /* Linkin bölünmesini engelle */
 }
 
-#recommendations-container li a:hover {
+.profile-header a:hover {
     text-decoration: underline;
 }
 
-#recommendations-container audio {
-    margin-top: 10px;
-    height: 35px;
-    /* Kontrol yüksekliği */
-    width: 100%;
-    /* Konteyner genişliğine uysun */
-    max-width: 300px;
-    /* Çok geniş olmasın */
+.profile-list-section {
+    margin-bottom: 30px;
+}
+
+.profile-list-section h3 {
+    text-align: center;
+    color: var(--dark-gray);
+    margin-bottom: 20px;
+    border-bottom: 2px solid var(--spotify-green);
+    display: inline-block;
+    /* Sadece metin kadar alt çizgi */
+    padding-bottom: 5px;
+}
+
+/* Sanatçı ve Şarkı Listeleri için Grid */
+.profile-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 15px;
+    text-align: center;
+}
+
+.profile-item a {
+    text-decoration: none;
+    color: var(--text-color);
     display: block;
-    /* Alt satıra geçsin */
+    transition: transform 0.2s ease;
 }
 
-/* Yükleniyor Mesajı Stili (Opsiyonel) */
-.loading {
-    text-align: center;
-    padding: 20px;
-    font-style: italic;
-    color: #888;
+.profile-item a:hover {
+    transform: scale(1.05);
 }
 
-/* Hata Mesajı Stili (Opsiyonel) */
-.error {
-    color: #d9534f;
-    /* Kırmızı tonu */
+.profile-item img {
+    width: 100%;
+    max-width: 100px;
+    /* Resim boyutu */
+    height: auto;
+    aspect-ratio: 1 / 1;
+    border-radius: 50%;
+    /* Sanatçılar için yuvarlak */
+    margin-bottom: 8px;
+    object-fit: cover;
+    box-shadow: 0 2px 4px var(--shadow-light);
+}
+
+.track-list .profile-item img {
+    border-radius: 6px;
+    /* Şarkılar için köşeli */
+}
+
+.profile-item span {
+    display: block;
     font-weight: bold;
+    font-size: 0.9em;
+    margin-bottom: 3px;
+}
+
+.profile-item small {
+    display: block;
+    font-size: 0.8em;
+    color: #666;
+}
+
+/* Tür Listesi */
+.genre-list {
+    list-style: none;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+}
+
+.genre-list li {
+    background-color: var(--light-gray);
+    color: var(--dark-gray);
+    padding: 5px 12px;
+    border-radius: 15px;
+    font-size: 0.9em;
+    border: 1px solid var(--medium-gray);
+}
+
+
+/* Yükleme ve Hata Stilleri */
+#loading {
+    /* Genel container stili yukarıda tanımlı */
+    color: var(--dark-gray);
+    font-style: italic;
+}
+
+#loading i {
+    margin-right: 10px;
+    color: var(--spotify-green);
+}
+
+#error-message {
+    /* Genel container stili yukarıda tanımlı */
+    color: var(--error-red);
+    background-color: var(--error-bg);
+    border: 1px solid var(--error-red);
+    font-weight: bold;
+}
+
+/* Footer */
+footer {
     text-align: center;
-    padding: 10px;
-    background-color: #f2dede;
-    border: 1px solid #ebccd1;
-    border-radius: 4px;
+    margin-top: 40px;
+    padding: 20px;
+    color: #777;
+    font-size: 0.9em;
+}
+
+/* Duyarlılık (Responsive Design) - Basit Örnek */
+@media (max-width: 768px) {
+    header {
+        flex-direction: column;
+        gap: 15px;
+        padding: 1rem;
+    }
+
+    .controls {
+        margin-top: 10px;
+    }
+
+    #main-content,
+    #profile-section {
+        margin: 20px 10px;
+        padding: 15px;
+    }
+
+    .recommendations-grid {
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        /* Daha küçük ekranlar için */
+        gap: 15px;
+    }
+
+    .profile-list {
+        grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+    }
+
+    .profile-pic {
+        width: 100px;
+        height: 100px;
+    }
+}
+
+@media (max-width: 480px) {
+    .recommendations-grid {
+        grid-template-columns: 1fr;
+        /* Tek sütun */
+    }
+
+    .song-card .action-btn {
+        font-size: 1.2em;
+        /* Mobil için ikonları biraz küçült */
+        width: 35px;
+        height: 35px;
+    }
+
+    .profile-list {
+        grid-template-columns: repeat(2, 1fr);
+        /* Profil listesi 2 sütun */
+    }
 }
