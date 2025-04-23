@@ -1,5 +1,6 @@
 import os
 import random # Rastgele tür seçimi için eklendi
+import traceback # Hata ayıklama için eklendi
 from flask import Flask, request, jsonify, redirect, url_for, session
 from flask_cors import CORS
 import spotipy
@@ -14,411 +15,578 @@ import logging
 app = Flask(__name__)
 
 # CORS ayarları
-CORS(app, resources={r"/*": {"origins": "http://127.0.0.1:5500"}}, supports_credentials=True) # Frontend origin'inizi doğrulayın
+# Geliştirme ortamı için frontend'in çalıştığı adresi belirtin.
+# Üretimde daha kısıtlı bir origin listesi kullanın.
+CORS(app, resources={r"/*": {"origins": ["http://127.0.0.1:5500", "http://localhost:5500"]}}, supports_credentials=True)
 
 # Logging ayarı
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s')
 logger = logging.getLogger(__name__)
 
-# Ortam değişkenleri ve varsayılan değerler
-app.secret_key = os.environ.get("FLASK_SECRET_KEY", "cok_gizli_bir_anahtar_olmalı")
-SPOTIPY_CLIENT_ID = os.environ.get("SPOTIPY_CLIENT_ID", "8e881dd7d57947f79003b34d33557d07") # Kendi Client ID'nizi girin
-SPOTIPY_CLIENT_SECRET = os.environ.get("SPOTIPY_CLIENT_SECRET", "6c5262493daf4ac38195c787e3808030") # Kendi Client Secret'ınızı girin
+# --- Ortam Değişkenleri ve Yapılandırma ---
+# Güvenli bir secret key kullanın ve ortam değişkeninden alınması önerilir.
+app.secret_key = os.environ.get("FLASK_SECRET_KEY", "123!@#")
+# --- GÜVENLİK UYARISI: Gizli bilgileri kod içinde hardcode ETME! Sadece ortam değişkenlerinden al. ---
+SPOTIPY_CLIENT_ID = os.environ.get("SPOTIPY_CLIENT_ID","8e881dd7d57947f79003b34d33557d07")
+SPOTIPY_CLIENT_SECRET = os.environ.get("SPOTIPY_CLIENT_SECRET","6c5262493daf4ac38195c787e3808030")
+# -------------------------------------------------------------------------------------------------
 SPOTIPY_REDIRECT_URI = os.environ.get("SPOTIPY_REDIRECT_URI", "http://127.0.0.1:5000/callback")
-FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://127.0.0.1:5500") # Frontend'inizin çalıştığı ana URL (örn: index.html'in olduğu yer)
+FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://127.0.0.1:5500") # Frontend'in çalıştığı adres
 SPOTIPY_SCOPES = "user-read-recently-played user-top-read user-read-private user-read-email"
 
 # Eksik ortam değişkenlerini kontrol et
-if not all([SPOTIPY_CLIENT_ID, SPOTIPY_CLIENT_SECRET, SPOTIPY_REDIRECT_URI, FRONTEND_URL, app.secret_key]):
-    logger.error("Eksik ortam değişkenleri veya Flask secret key!")
-    if app.secret_key == "cok_gizli_bir_anahtar_olmalı":
-        logger.warning("Varsayılan FLASK_SECRET_KEY kullanılıyor. Lütfen üretim ortamı için güvenli bir anahtar ayarlayın.")
-    # exit(1) # Üretimde çıkış yap
+missing_vars = []
+if not SPOTIPY_CLIENT_ID: missing_vars.append("SPOTIPY_CLIENT_ID")
+if not SPOTIPY_CLIENT_SECRET: missing_vars.append("SPOTIPY_CLIENT_SECRET")
+# SPOTIPY_REDIRECT_URI ve FRONTEND_URL için varsayılan değerler kabul edilebilir, ancak üretimde ayarlanmaları önerilir.
+# if not SPOTIPY_REDIRECT_URI: missing_vars.append("SPOTIPY_REDIRECT_URI")
+# if not FRONTEND_URL: missing_vars.append("FRONTEND_URL")
 
-# İsteğe bağlı: Veritabanı nesnesi
-# from database import Database
-# db = Database()
+if app.secret_key == "123!@#":
+    logger.warning("Varsayılan FLASK_SECRET_KEY kullanılıyor. Lütfen üretim ortamı için güvenli bir anahtar ayarlayın (FLASK_SECRET_KEY ortam değişkeni).")
 
-# Spotify OAuth (Kullanıcı Girişi İçin)
+if missing_vars:
+    # Eksik değişkenler varsa uygulamayı başlatma
+    logger.critical(f"Kritik ortam değişkenleri eksik: {', '.join(missing_vars)}. Uygulama başlatılamıyor.")
+    logger.critical("Lütfen SPOTIPY_CLIENT_ID ve SPOTIPY_CLIENT_SECRET ortam değişkenlerini ayarlayın.")
+    exit(1) # Eksik değişkenlerle başlatmayı durdur
+
+# --- Spotify İstemcileri ---
+sp_oauth = None
+sp_cc = None
+AVAILABLE_GENRE_SEEDS = ['pop', 'rock', 'electronic', 'hip-hop', 'latin', 'jazz', 'classical', 'turkish pop', 'r-n-b', 'indie', 'dance', 'metal', 'alternative', 'acoustic', 'chill', 'country', 'funk', 'reggae', 'soul'] # Başlangıç için varsayılan liste
+
 try:
+    # Spotify OAuth (Kullanıcı Girişi İçin)
     sp_oauth = SpotifyOAuth(
         client_id=SPOTIPY_CLIENT_ID,
         client_secret=SPOTIPY_CLIENT_SECRET,
         redirect_uri=SPOTIPY_REDIRECT_URI,
         scope=SPOTIPY_SCOPES,
-        show_dialog=True
+        show_dialog=True # Her seferinde yetki ekranını gösterir (geliştirme için kullanışlı)
+        # cache_path=".spotify_cache" # Token'ları diskte saklamak için (isteğe bağlı)
     )
-except Exception as e:
-    logger.error(f"SpotifyOAuth başlatılırken hata oluştu: {e}")
-    exit(1)
 
-# --- Client Credentials Manager (Genel API Erişimi İçin) ---
-try:
+    # Spotify Client Credentials (Genel API Erişimi İçin)
     client_credentials_manager = SpotifyClientCredentials(
         client_id=SPOTIPY_CLIENT_ID,
         client_secret=SPOTIPY_CLIENT_SECRET
     )
     sp_cc = spotipy.Spotify(client_credentials_manager=client_credentials_manager)
-    # Uygulama kimlik bilgileriyle mevcut türleri çekelim
-    AVAILABLE_GENRE_SEEDS = sp_cc.recommendation_genre_seeds()['genres']
-    logger.info(f"{len(AVAILABLE_GENRE_SEEDS)} adet kullanılabilir tür bulundu.")
+
+    # Tür listesini API'den çekme denemesi (Artık 404 veriyor gibi görünüyor, bu yüzden devre dışı)
+    # try:
+    #     genre_data = sp_cc.recommendation_genre_seeds()
+    #     # ... (önceki kod)
+    # except SpotifyException as e:
+    #     # ... (önceki kod)
+    # except Exception as e:
+    #     # ... (önceki kod)
+
+    logger.info(f"Statik tür listesi kullanılıyor ({len(AVAILABLE_GENRE_SEEDS)} adet).")
+
+
+except SpotifyException as e:
+    logger.error(f"Spotify istemcisi başlatılırken Spotify API hatası: {e}")
+    logger.error("Lütfen SPOTIPY_CLIENT_ID ve SPOTIPY_CLIENT_SECRET değerlerinin doğru olduğundan emin olun.")
+    exit(1)
 except Exception as e:
-    logger.error(f"Spotify Client Credentials başlatılırken veya türler çekilirken hata: {e}")
-    AVAILABLE_GENRE_SEEDS = ['pop', 'rock', 'electronic', 'hip-hop', 'latin', 'jazz', 'classical', 'turkish pop'] # Fallback listesi
+    logger.error(f"Spotify istemcisi başlatılırken beklenmedik hata: {e}", exc_info=True)
+    exit(1)
+
 
 # --- Token Yardımcı Fonksiyonu ---
 def get_token():
+    """
+    Session'dan token bilgisini alır. Süresi dolmuşsa yenilemeye çalışır.
+    Başarısız olursa veya token yoksa None döner.
+    """
     token_info = session.get('token_info')
     if not token_info:
-        logger.warning("Session'da token bilgisi bulunamadı.")
+        logger.debug("Session'da token bilgisi bulunamadı.")
+        return None
+
+    # Token'ın geçerli bir sözlük olup olmadığını kontrol et
+    if not isinstance(token_info, dict) or 'access_token' not in token_info:
+        # Refresh token kontrolü burada kritik değil, yenileme sırasında kontrol edilecek.
+        logger.error(f"Session'daki token_info beklenen formatta değil veya access_token eksik: {token_info}")
+        session.pop('token_info', None)
+        session.pop('user_data', None) # İlişkili kullanıcı verisini de temizle
         return None
 
     # Token süresinin dolup dolmadığını kontrol et
-    # Spotipy'nin is_token_expired metodu token_info sözlüğünü bekler
-    if isinstance(token_info, dict) and sp_oauth.is_token_expired(token_info):
-        logger.info("Spotify token süresi dolmuş, yenileniyor...")
-        try:
+    try:
+        # Token süresinin dolup dolmadığını kontrol et
+        if sp_oauth.is_token_expired(token_info):
+            logger.info("Spotify token süresi dolmuş, yenileniyor...")
             refresh_token = token_info.get('refresh_token')
+            # Yenileme token'ı olmadan yenileme yapılamaz
             if not refresh_token:
-                 raise ValueError("Refresh token bulunamadı.")
-            # refresh_access_token metodu refresh_token string'ini bekler
+                 logger.error("Token yenilemek için refresh_token bulunamadı. Kullanıcının tekrar giriş yapması gerekiyor.")
+                 session.pop('token_info', None)
+                 session.pop('user_data', None)
+                 return None
+
+            # --- YENİ TOKEN BURADA ALINIYOR ---
             new_token_info = sp_oauth.refresh_access_token(refresh_token)
+            # ------------------------------------
+
             session['token_info'] = new_token_info # Yenilenen token'ı session'a kaydet
             logger.info("Token başarıyla yenilendi.")
             return new_token_info # Yenilenmiş token bilgisini döndür
-        except Exception as e:
-            logger.error(f"Token yenilenirken hata oluştu: {e}. Kullanıcının tekrar giriş yapması gerekebilir.")
-            session.pop('token_info', None)
-            session.pop('user_data', None)
-            return None # Yenileme başarısız oldu
-    elif not isinstance(token_info, dict):
-         logger.error(f"Session'daki token_info beklenen formatta değil: {type(token_info)}")
-         session.pop('token_info', None)
-         session.pop('user_data', None)
-         return None
+        else:
+            # Token hala geçerli
+            logger.debug("Mevcut token hala geçerli.")
+            return token_info
 
-    return token_info # Token geçerliyse mevcut olanı döndür
+    except SpotifyException as e:
+        logger.error(f"Token yenilenirken Spotify API hatası: {e}. Kullanıcının tekrar giriş yapması gerekebilir.")
+        # Hata durumunda session'ı temizle
+        session.pop('token_info', None)
+        session.pop('user_data', None)
+        return None # Yenileme başarısız oldu
+    except Exception as e:
+        logger.error(f"Token yenilenirken beklenmedik hata: {e}", exc_info=True)
+        session.pop('token_info', None)
+        session.pop('user_data', None)
+        return None # Yenileme başarısız oldu
 
 # --- Rotalar ---
+@app.route('/')
+def index():
+    # Basit bir hoşgeldin mesajı veya API durum sayfası
+    return jsonify({"message": "Spotify Recommendation API Backend", "status": "running"})
+
 @app.route('/login')
 def login():
+    """Kullanıcıyı Spotify yetkilendirme sayfasına yönlendirir."""
     logger.info("Kullanıcı Spotify yetkilendirmesi için yönlendiriliyor.")
+    if not sp_oauth:
+        logger.error("Spotify OAuth nesnesi başlatılamadı.")
+        return jsonify({"error": "Sunucu yapılandırma hatası."}), 500
     try:
-        auth_url = sp_oauth.get_authorize_url()
+        # State parametresi eklemek CSRF saldırılarına karşı koruma sağlar.
+        # state = os.urandom(16).hex()
+        # session['oauth_state'] = state
+        # auth_url = sp_oauth.get_authorize_url(state=state)
+        auth_url = sp_oauth.get_authorize_url() # Şimdilik state olmadan devam ediliyor
         return redirect(auth_url)
     except Exception as e:
-        logger.error(f"Spotify yetkilendirme URL'si alınırken hata: {e}")
+        logger.error(f"Spotify yetkilendirme URL'si alınırken hata: {e}", exc_info=True)
         return jsonify({"error": "Spotify ile bağlantı kurulamadı."}), 500
+
 
 @app.route('/callback')
 def callback():
+    """Spotify tarafından geri çağrılan endpoint. Yetkilendirme kodunu alır ve token ile değiştirir."""
     logger.info("Spotify callback işleniyor.")
     code = request.args.get('code')
     error = request.args.get('error')
+    # state = request.args.get('state') # State kontrolü eklenecekse
+
+    # State kontrolü (CSRF koruması için önerilir)
+    # stored_state = session.pop('oauth_state', None)
+    # if not state or state != stored_state:
+    #     logger.error("OAuth state uyuşmazlığı veya eksik state.")
+    #     return redirect(f"{FRONTEND_URL}?error=state_mismatch")
 
     if error:
         logger.error(f"Spotify yetkilendirme hatası: {error}")
-        return redirect(f"{FRONTEND_URL}?error=spotify_auth_error")
+        # Hata mesajını frontend'e ilet
+        return redirect(f"{FRONTEND_URL}?error=spotify_auth_error&message={error}")
 
     if not code:
         logger.error("Callback isteğinde 'code' parametresi eksik.")
         return redirect(f"{FRONTEND_URL}?error=missing_code")
 
+    if not sp_oauth:
+        logger.error("Spotify OAuth nesnesi başlatılamadı.")
+        return redirect(f"{FRONTEND_URL}?error=server_config_error")
+
     try:
-        # Token'ı sözlük olarak al
-        token_info = sp_oauth.get_access_token(code, as_dict=True, check_cache=False)
-        if not token_info:
-             raise Exception("Token alınamadı.")
+        # Token'ı al.
+        # Not: `spotipy`'nin bazı sürümlerinde bu satır hala DeprecationWarning verebilir,
+        # ancak `as_dict=True` olmadan kullanım güncel sürümler için doğrudur.
+        token_info = sp_oauth.get_access_token(code, check_cache=False)
+
+        if not token_info or not isinstance(token_info, dict) or 'access_token' not in token_info:
+             logger.error(f"Token alınamadı veya geçersiz format: {token_info}")
+             # Frontend'e daha açıklayıcı bir hata yönlendirmesi yapılabilir
+             return redirect(f"{FRONTEND_URL}?error=token_exchange_failed")
+
         session['token_info'] = token_info
-        logger.info("Spotify access token başarıyla alındı.")
-        return redirect(url_for('get_user_data'))
+        logger.info("Spotify access token başarıyla alındı ve session'a kaydedildi.")
+        # Token alındıktan sonra kullanıcı verilerini çekmek için başka bir route'a yönlendir
+        return redirect(url_for('fetch_and_store_user_data'))
+    except SpotifyException as e:
+        logger.error(f"Token değişimi sırasında Spotify API hatası: {e}")
+        return redirect(f"{FRONTEND_URL}?error=token_exchange_error&message={e.msg}")
     except Exception as e:
-        logger.error(f"Token değişimi sırasında hata: {e}")
+        logger.error(f"Token değişimi sırasında beklenmedik hata: {e}", exc_info=True)
         return redirect(f"{FRONTEND_URL}?error=token_exchange_error")
 
 
-@app.route('/get_user_data')
-def get_user_data():
-    logger.info("Spotify'dan kullanıcı verileri çekiliyor.")
-    token_info = get_token()
+@app.route('/fetch_and_store_user_data')
+def fetch_and_store_user_data():
+    """Access token kullanarak Spotify'dan kullanıcı verilerini çeker ve session'a kaydeder."""
+    logger.info("Spotify'dan kullanıcı verileri çekiliyor ve session'a kaydediliyor.")
+    token_info = get_token() # Token'ı al (veya yenile)
     if not token_info:
-        logger.warning("Kullanıcı verisi çekmek için geçerli token yok. Login sayfasına yönlendiriliyor.")
-        # Token yoksa veya yenilenemediyse login'e yönlendir
-        return redirect(url_for('login'))
+        logger.warning("Kullanıcı verisi çekmek için geçerli token yok. Login gerekli.")
+        # Token yoksa veya yenilenemediyse frontend'e hata ilet
+        return redirect(f"{FRONTEND_URL}?error=authentication_required")
 
     try:
         access_token = token_info.get('access_token')
         if not access_token:
-             raise ValueError("Access token bulunamadı.")
+             logger.error("Token bilgisinde access_token bulunamadı.")
+             # Bu durum get_token içinde yakalanmalıydı ama ek kontrol
+             session.pop('token_info', None)
+             session.pop('user_data', None)
+             return redirect(f"{FRONTEND_URL}?error=internal_error_token")
 
         sp = spotipy.Spotify(auth=access_token)
-        user_data = sp.me()
-        user_id = user_data['id']
-        username = user_data.get('display_name', user_id)
+        user_data = sp.me() # Kullanıcı bilgilerini al
+        if not user_data or 'id' not in user_data:
+             logger.error(f"Spotify API'den geçerli kullanıcı verisi alınamadı: {user_data}")
+             # Token geçerli ama veri alınamıyorsa API sorunu olabilir
+             return redirect(f"{FRONTEND_URL}?error=spotify_user_data_error")
 
-        session['user_data'] = user_data
+        user_id = user_data['id']
+        username = user_data.get('display_name', user_id) # Görünen ad yoksa ID kullan
+
+        session['user_data'] = user_data # Kullanıcı verisini session'a kaydet
         logger.info(f"Kullanıcı bilgileri session'a kaydedildi: {username} ({user_id})")
 
-        # İsteğe bağlı: Kullanıcıyı kendi veritabanına ekleme/güncelleme
-        # ... (DB kodu) ...
-
-        logger.info(f"Kullanıcı verileri başarıyla çekildi ve kaydedildi: {username}. Frontend'e yönlendiriliyor.")
-        # Başarılı olursa frontend'e yönlendir
+        # Başarılı olursa frontend'in ana sayfasına veya dashboard'una yönlendir
+        logger.info(f"Kullanıcı verileri başarıyla çekildi. Frontend'e yönlendiriliyor: {FRONTEND_URL}")
         return redirect(FRONTEND_URL)
 
     except SpotifyException as e:
         logger.error(f"Spotify API hatası (kullanıcı verisi çekme): {e}")
-        # Token geçersiz veya yetki sorunu olabilir, session'ı temizleyip login'e yönlendir
+        # Token geçersiz veya yetki sorunu olabilir, session'ı temizle
         session.pop('token_info', None)
         session.pop('user_data', None)
-        return redirect(f"{FRONTEND_URL}?error=spotify_api_error")
+        error_code = "spotify_api_error"
+        if e.http_status == 401 or e.http_status == 403:
+            error_code = "authentication_required" # Yetki hatası ise tekrar login gerektiğini belirt
+        return redirect(f"{FRONTEND_URL}?error={error_code}&message={e.msg}")
     except Exception as e:
-        logger.error(f"Kullanıcı verisi çekme sırasında beklenmedik hata: {e}")
-        return redirect(f"{FRONTEND_URL}?error=internal_error")
+        logger.error(f"Kullanıcı verisi çekme sırasında beklenmedik hata: {e}", exc_info=True)
+        session.pop('token_info', None) # Güvenlik için session'ı temizle
+        session.pop('user_data', None)
+        return redirect(f"{FRONTEND_URL}?error=internal_server_error")
+
 
 @app.route('/user_data')
-def user_data():
+def get_user_data_from_session():
+    """Session'daki mevcut kullanıcı verisini döndürür veya giriş gerektiğini belirtir."""
     logger.debug("Session'daki kullanıcı verisi kontrol ediliyor.")
-    token_info = get_token() # Token kontrolü (ve yenileme) burada da önemli
+    token_info = get_token() # Token'ın hala geçerli olup olmadığını kontrol et (ve yenile)
     user_data = session.get('user_data')
 
     if user_data and token_info:
         # Hem kullanıcı verisi hem de geçerli token varsa bilgiyi döndür
-        logger.info(f"Mevcut kullanıcı verisi döndürülüyor: {user_data.get('display_name')}")
+        username = user_data.get('display_name', user_data.get('id', 'N/A'))
+        logger.info(f"Mevcut kullanıcı verisi döndürülüyor: {username}")
         return jsonify(user_data)
+    elif user_data and not token_info:
+        # Kullanıcı verisi var ama token süresi dolmuş ve yenilenememiş
+        logger.warning("Kullanıcı verisi var ama token geçersiz/yenilenemedi. Tekrar giriş gerekli.")
+        session.pop('user_data', None) # Eski kullanıcı verisini temizle
+        return jsonify({"error": "Oturum süresi doldu. Lütfen tekrar giriş yapın.", "login_required": True}), 401
     else:
-        # Kullanıcı verisi veya geçerli token yoksa giriş yapılması gerektiğini belirt
-        logger.warning("Session'da geçerli kullanıcı verisi veya token bulunamadı.")
+        # Kullanıcı verisi veya token yoksa giriş yapılması gerektiğini belirt
+        logger.info("Session'da geçerli kullanıcı verisi veya token bulunamadı. Giriş gerekli.")
         return jsonify({"error": "Kullanıcı girişi gerekli.", "login_required": True}), 401
 
 
-# --- YENİ ROTA: Başlangıç Önerileri ---
+@app.route('/logout')
+def logout():
+    """Kullanıcı oturumunu sonlandırır."""
+    user_id = session.get('user_data', {}).get('id', 'Bilinmeyen Kullanıcı')
+    logger.info(f"Kullanıcı {user_id} oturumu sonlandırılıyor.")
+    session.pop('token_info', None)
+    session.pop('user_data', None)
+    # session.clear() # Tüm session verilerini temizlemek için alternatif
+    # İsteğe bağlı: Spotify tarafında da yetkiyi kaldırma (genellikle gerekli değil)
+    # Cache kullanılıyorsa cache dosyasını silmek de düşünülebilir.
+    return jsonify({"message": "Başarıyla çıkış yapıldı."})
+
+
+# --- Öneri Rotaları (Search Endpoint'i Kullanarak Güncellendi) ---
+
 @app.route('/initial_recommendations')
 def get_initial_recommendations():
-    logger.info("Başlangıç için rastgele öneri isteği alındı.")
+    """
+    Giriş yapmamış kullanıcılar için rastgele türlere dayalı arama sonuçları sunar
+    (Önceki recommendations endpoint'i yerine search kullanılıyor).
+    """
+    logger.info("Başlangıç için rastgele türlere göre arama isteği alındı.")
+
+    if not sp_cc:
+        logger.error("Client Credentials istemcisi başlatılamadı.")
+        return jsonify({"error": "Sunucu yapılandırma hatası."}), 500
+
     recommendations_json = []
     try:
-        # Rastgele 1-5 tür seç (Daha fazla çeşitlilik için)
+        # Rastgele 1-5 tür seç
         if not AVAILABLE_GENRE_SEEDS:
-             logger.warning("Kullanılabilir tür listesi boş veya alınamadı. Fallback türler kullanılıyor.")
-             # Daha geniş bir fallback listesi
-             fallback_genres = ['pop', 'rock', 'electronic', 'hip-hop', 'latin', 'jazz', 'classical', 'turkish pop', 'r-n-b', 'indie', 'dance']
-             num_seeds = random.randint(1, min(5, len(fallback_genres))) # En fazla 5 tür
-             seed_genres = random.sample(fallback_genres, num_seeds)
-        else:
-            # 1 ile 5 arasında veya mevcut tür sayısı kadar seç
-            num_seeds = random.randint(1, min(5, len(AVAILABLE_GENRE_SEEDS)))
-            seed_genres = random.sample(AVAILABLE_GENRE_SEEDS, num_seeds)
+             logger.error("Kullanılabilir tür listesi boş! Başlangıç araması yapılamıyor.")
+             return jsonify({"error": "Arama için tür listesi bulunamadı."}), 500
 
-        logger.info(f"Başlangıç önerileri için rastgele türler seçildi: {seed_genres}")
+        num_seeds = random.randint(1, min(5, len(AVAILABLE_GENRE_SEEDS)))
+        seed_genres = random.sample(AVAILABLE_GENRE_SEEDS, num_seeds)
+        logger.info(f"Başlangıç araması için rastgele türler seçildi: {seed_genres}")
 
-        # Client credentials ile önerileri al
-        # Market parametresini test için yorum satırı yapabilirsin: market='TR'
-        recommendations_data = sp_cc.recommendations(
-            seed_genres=seed_genres,
-            limit=10,
-            market='TR'
+        # --- Spotify API Çağrısı (Search Endpoint'i Kullanarak) ---
+        # Seçilen türleri içeren bir arama sorgusu oluştur
+        # Not: Spotify'ın 'genre:' filtresi bazen kısıtlı olabilir, genel arama daha fazla sonuç verebilir.
+        # search_query = f"genre:{' '.join(seed_genres)}"
+        search_query = f"{random.choice(seed_genres)} music" # Daha genel bir arama
+        logger.debug(f"sp_cc.search çağrılıyor, query: '{search_query}'")
+
+        search_results = sp_cc.search(
+            q=search_query,
+            type='track', # Sadece şarkı ara
+            limit=10,     # Sonuç sayısı
+            market='TR'   # Pazar kodu (isteğe bağlı)
         )
+        logger.debug("sp_cc.search çağrısı tamamlandı.")
+        # -------------------------------------------------------
 
-        # Sonucu JSON formatına çevir
-        if recommendations_data and recommendations_data.get('tracks'):
-            logger.info(f"Spotify'dan {len(recommendations_data['tracks'])} adet başlangıç önerisi bulundu.")
-            for track in recommendations_data['tracks']:
+        # Sonucu JSON formatına çevir (Search API'sinin yapısı farklı)
+        if search_results and search_results.get('tracks') and search_results['tracks'].get('items'):
+            tracks = search_results['tracks']['items'] # 'items' listesine eriş
+            logger.info(f"Spotify aramasından {len(tracks)} adet başlangıç sonucu bulundu.")
+            for track in tracks:
                 if track and track.get('id'):
                     album_art = None
                     if track.get('album') and isinstance(track['album'].get('images'), list) and track['album']['images']:
                         album_art = track['album']['images'][0]['url']
 
                     recommendations_json.append({
-                        "_id": track['id'],
+                        "id": track['id'],
                         "title": track.get('name', 'N/A'),
-                        "artist": ", ".join([artist.get('name', 'N/A') for artist in track.get('artists', [])]),
+                        "artist": ", ".join([artist.get('name', 'N/A') for artist in track.get('artists', []) if artist]),
                         "album_art_url": album_art,
                         "spotify_url": track.get('external_urls', {}).get('spotify'),
                         "preview_url": track.get('preview_url'),
                     })
-            logger.info(f"Başarıyla {len(recommendations_json)} adet başlangıç önerisi formatlandı.")
+            logger.info(f"Başarıyla {len(recommendations_json)} adet başlangıç sonucu formatlandı.")
         else:
-            logger.warning("Başlangıç önerileri için Spotify API'den geçerli öneri alınamadı.")
-            # API'den geçerli veri gelmezse boş liste döndürülür.
+            logger.warning(f"Başlangıç araması için Spotify API'den geçerli 'tracks' veya 'items' verisi alınamadı. Yanıt: {search_results}")
 
         return jsonify(recommendations_json)
 
     except SpotifyException as e:
-        # --- DÜZELTME BURADA ---
-        # Hata durumunda status kodunu logla, e.url kaldırıldı.
-        logger.error(f"Başlangıç önerileri alınırken Spotify API hatası: Status={e.http_status}, Code={e.code}, Msg={e.msg}")
-        # Frontend'e daha genel bir hata mesajı gönder
-        # 4xx hataları için ilgili status kodunu, diğerleri için 500 döndür
-        error_status_code = e.http_status if e.http_status in [400, 401, 403, 404, 429] else 500
-        return jsonify({"error": f"Başlangıç önerileri alınamadı (Spotify API Hatası)."}), error_status_code
+        # Search endpoint'i için 404 genellikle beklenmez, ancak diğer hatalar olabilir.
+        logger.error(f"Başlangıç araması sırasında Spotify API hatası: Status={e.http_status}, Code={e.code}, Msg={e.msg}")
+        error_status_code = e.http_status if e.http_status in [400, 401, 403, 429] else 500
+        error_message = "Başlangıç sonuçları alınamadı."
+        if e.http_status == 429:
+             error_message += " (API limit aşıldı)"
+        elif e.http_status == 401 or e.http_status == 403:
+             error_message += " (Yetkilendirme sorunu)"
+        # 404 durumunu yine de loglayalım
+        elif e.http_status == 404:
+             logger.error(f"Spotify Search API 404 (Not Found) hatası alındı! URL: {e.msg}. Bu beklenmedik bir durum.")
+             error_message += " (Kaynak bulunamadı - Spotify API sorunu olabilir)"
+
+        return jsonify({"error": error_message}), error_status_code
     except Exception as e:
-        # Beklenmedik hatalar için traceback'i logla
-        logger.error(f"Başlangıç önerileri alınırken beklenmedik hata: {e}", exc_info=True)
-        return jsonify({"error": "Başlangıç önerileri alınırken sunucu hatası oluştu."}), 500
+        logger.error(f"Başlangıç araması sırasında beklenmedik hata: {e}", exc_info=True)
+        return jsonify({"error": "Başlangıç sonuçları alınırken sunucu hatası oluştu."}), 500
 
 
-
-# --- Mevcut /recommendations Rotası (Kullanıcı Geçmişine Göre) ---
 @app.route('/recommendations', methods=['POST'])
-def get_recommendations_api():
-    logger.info("Geçmişe dayalı müzik önerisi isteği alındı.")
+def get_recommendations_for_user():
+    """
+    Giriş yapmış kullanıcının dinleme geçmişine göre arama sonuçları sunar
+    (Önceki recommendations endpoint'i yerine search kullanılıyor).
+    """
+    logger.info("Geçmişe dayalı müzik arama isteği alındı.")
     token_info = get_token()
     if not token_info:
-        logger.warning("Öneri isteği için geçerli token bulunamadı.")
+        logger.warning("Arama isteği için geçerli token bulunamadı. Giriş gerekli.")
         return jsonify({"error": "Yetkilendirme gerekli. Lütfen tekrar giriş yapın.", "login_required": True}), 401
 
     user_data = session.get('user_data')
     if not user_data or not user_data.get('id'):
-        logger.error("Öneri isteği sırasında session'da geçerli kullanıcı verisi bulunamadı!")
+        logger.error("Arama isteği sırasında session'da geçerli kullanıcı verisi bulunamadı!")
+        session.pop('token_info', None)
+        session.pop('user_data', None)
         return jsonify({"error": "Oturum hatası veya geçersiz kullanıcı verisi. Lütfen tekrar giriş yapın.", "login_required": True}), 401
 
     user_id = user_data['id']
-
-    logger.info(f"Kullanıcı ID: {user_id} için Spotify'dan öneriler hazırlanıyor.")
+    logger.info(f"Kullanıcı ID: {user_id} için Spotify'dan arama sonuçları hazırlanıyor.")
 
     try:
         access_token = token_info.get('access_token')
         if not access_token:
-             raise ValueError("Access token bulunamadı.")
+             logger.error(f"Kullanıcı {user_id} için access_token alınamadı.")
+             session.pop('token_info', None)
+             session.pop('user_data', None)
+             return jsonify({"error": "Oturum hatası (token alınamadı). Lütfen tekrar giriş yapın.", "login_required": True}), 401
         sp = spotipy.Spotify(auth=access_token)
 
-        # 1. Spotify'dan "seed" (tohum) verileri çek
-        seed_tracks = []
-        seed_artists = []
-        seed_genres = []
-        using_default_seeds = False # Varsayılan seed kullanılıp kullanılmadığını takip etmek için flag
+        # 1. Spotify'dan arama için "ipucu" verileri çek (Top Artists/Tracks)
+        search_query = None
+        query_basis = "rastgele popüler türler" # Sorgunun neye dayandığını belirtmek için
 
         try:
-            # En çok dinlenen şarkıları al
-            top_tracks = sp.current_user_top_tracks(limit=5, time_range='short_term')
-            if top_tracks and top_tracks.get('items'):
-                seed_tracks = [track['id'] for track in top_tracks['items']]
-                logger.info(f"Seed için {len(seed_tracks)} adet top track ID'si bulundu.")
-                # Türleri de ekleyelim (limit dahilinde)
-                for track in top_tracks['items']:
-                    if len(seed_tracks) + len(seed_artists) + len(seed_genres) < 5:
-                        try:
-                            artist_id = track['artists'][0]['id']
-                            artist_info = sp.artist(artist_id)
-                            if artist_info and artist_info.get('genres'):
-                                potential_genres = list(set(seed_genres + artist_info['genres']))
-                                seed_genres = potential_genres[:5 - len(seed_tracks) - len(seed_artists)]
-                        except IndexError:
-                             logger.warning(f"Şarkı {track.get('id')} için sanatçı bilgisi bulunamadı.")
-                        except SpotifyException as artist_e:
-                             logger.warning(f"Sanatçı {artist_id} için tür bilgisi alınamadı: {artist_e}")
+            # En çok dinlenen sanatçıları al (kısa vadeli)
+            logger.debug(f"Kullanıcı {user_id} için top artists çekiliyor...")
+            top_artists_data = sp.current_user_top_artists(limit=5, time_range='short_term') # 5 sanatçı alalım
 
-            # Yeterli şarkı yoksa sanatçıları al
-            if len(seed_tracks) + len(seed_artists) + len(seed_genres) < 5:
-                artist_limit = 5 - len(seed_tracks) - len(seed_genres)
-                if artist_limit > 0:
-                    top_artists = sp.current_user_top_artists(limit=artist_limit, time_range='short_term')
-                    if top_artists and top_artists.get('items'):
-                        new_artist_ids = [artist['id'] for artist in top_artists['items']]
-                        seed_artists.extend(new_artist_ids)
-                        logger.info(f"Seed için {len(new_artist_ids)} adet top artist ID'si eklendi.")
-                        for artist in top_artists['items']:
-                             if artist.get('genres') and len(seed_tracks) + len(seed_artists) + len(seed_genres) < 5:
-                                 potential_genres = list(set(seed_genres + artist['genres']))
-                                 seed_genres = potential_genres[:5 - len(seed_tracks) - len(seed_artists)]
+            if top_artists_data and top_artists_data.get('items'):
+                top_artists = [artist for artist in top_artists_data['items'] if artist and artist.get('name')]
+                if top_artists:
+                    # En popüler sanatçının adını arama sorgusu yap
+                    selected_artist = top_artists[0]['name']
+                    search_query = f"{selected_artist}" # Sadece sanatçı adı ile arama
+                    query_basis = f"en çok dinlenen sanatçı ({selected_artist})"
+                    logger.info(f"Arama için en çok dinlenen sanatçı bulundu: {selected_artist}")
 
-            # Hiç kişisel seed bulunamadıysa, varsayılan türleri kullan
-            if not seed_tracks and not seed_artists and not seed_genres:
-                 logger.warning(f"Kullanıcı {user_id} için kişisel seed bulunamadı. Varsayılan popüler türler kullanılacak.")
+            # Eğer sanatçı bulunamazsa, en çok dinlenen şarkıların türlerini kullanmayı dene
+            if not search_query:
+                logger.debug(f"Kullanıcı {user_id} için top tracks çekiliyor...")
+                top_tracks_data = sp.current_user_top_tracks(limit=5, time_range='short_term')
+                if top_tracks_data and top_tracks_data.get('items'):
+                    track_ids = [track['id'] for track in top_tracks_data['items'] if track and track.get('id')]
+                    if track_ids:
+                        # Şarkıların sanatçılarının türlerini al (biraz daha karmaşık)
+                        # Basitlik için ilk şarkının sanatçısını alalım
+                        first_track_details = sp.track(track_ids[0])
+                        if first_track_details and first_track_details.get('artists'):
+                            first_artist_id = first_track_details['artists'][0]['id']
+                            if first_artist_id:
+                                artist_details = sp.artist(first_artist_id)
+                                if artist_details and artist_details.get('genres'):
+                                    selected_genre = random.choice(artist_details['genres'])
+                                    search_query = f"{selected_genre} music" # Tür ile arama
+                                    query_basis = f"en çok dinlenen şarkının türü ({selected_genre})"
+                                    logger.info(f"Arama için en çok dinlenen şarkının türü bulundu: {selected_genre}")
+                                elif artist_details and artist_details.get('name'):
+                                     # Tür yoksa sanatçı adını kullan
+                                     selected_artist = artist_details['name']
+                                     search_query = f"{selected_artist}"
+                                     query_basis = f"en çok dinlenen şarkının sanatçısı ({selected_artist})"
+                                     logger.info(f"Arama için en çok dinlenen şarkının sanatçısı bulundu: {selected_artist}")
+
+
+            # Hala arama sorgusu yoksa, varsayılan türleri kullan
+            if not search_query:
+                 logger.warning(f"Kullanıcı {user_id} için kişisel arama ipucu (sanatçı/tür) bulunamadı. Rastgele popüler türler kullanılacak.")
                  if not AVAILABLE_GENRE_SEEDS:
-                      logger.warning("Kullanılabilir tür listesi boş. Fallback türler kullanılıyor.")
-                      seed_genres = ['pop', 'rock', 'electronic'] # Fallback
+                      logger.error("Kullanılabilir tür listesi boş! Varsayılan arama yapılamıyor.")
+                      return jsonify({"error": "Arama yapmak için yeterli veri veya yapılandırma bulunamadı."}), 500
                  else:
-                      num_seeds = min(5, len(AVAILABLE_GENRE_SEEDS)) # En fazla 5 tür
-                      seed_genres = random.sample(AVAILABLE_GENRE_SEEDS, num_seeds)
-                 using_default_seeds = True
+                      selected_genre = random.choice(AVAILABLE_GENRE_SEEDS)
+                      search_query = f"{selected_genre} music" # Rastgele tür ile arama
+                      query_basis = f"rastgele popüler tür ({selected_genre})"
+                      logger.info(f"Varsayılan arama türü seçildi: {selected_genre}")
 
-            # Seed sayısını tekrar kontrol et
-            seed_tracks = seed_tracks[:5]
-            seed_artists = seed_artists[:5-len(seed_tracks)]
-            seed_genres = seed_genres[:5-len(seed_tracks)-len(seed_artists)]
-
-            logger.info(f"Kullanılacak Seed'ler - Tracks: {seed_tracks}, Artists: {seed_artists}, Genres: {seed_genres}")
+            logger.info(f"Kullanılacak Arama Sorgusu: '{search_query}' (Kaynak: {query_basis})")
 
         except SpotifyException as e:
-            logger.error(f"Spotify'dan seed verisi çekilemedi (Kullanıcı: {user_id}): {e}")
-            return jsonify({"error": f"Spotify dinleme geçmişinize erişirken bir sorun oluştu: {e.msg}", "login_required": e.http_status == 401}), e.http_status if e.http_status in [401, 429] else 500
+            logger.error(f"Spotify'dan arama ipucu verisi çekilemedi (Kullanıcı: {user_id}): {e}")
+            error_status = e.http_status if e.http_status in [401, 403, 429] else 500
+            login_req = error_status in [401, 403]
+            return jsonify({"error": f"Spotify dinleme geçmişinize erişirken bir sorun oluştu.", "details": e.msg, "login_required": login_req}), error_status
         except Exception as e:
-            logger.error(f"Seed verilerini işlerken beklenmedik hata (Kullanıcı: {user_id}): {e}")
+            logger.error(f"Arama ipucu verilerini işlerken beklenmedik hata (Kullanıcı: {user_id}): {e}", exc_info=True)
             return jsonify({"error": "Dinleme geçmişiniz işlenirken beklenmedik bir hata oluştu."}), 500
 
-        # 3. Spotify'dan önerileri al
-        recommendations_data = None
+        # 2. Spotify'dan arama sonuçlarını al
+        search_results = None
         try:
-            logger.info("Spotify recommendations API çağrılıyor...")
-            recommendations_data = sp.recommendations(
-                seed_tracks=seed_tracks if seed_tracks else None,
-                seed_artists=seed_artists if seed_artists else None,
-                seed_genres=seed_genres if seed_genres else None,
+            # --- Spotify API Çağrısı (Search Endpoint'i Kullanarak) ---
+            logger.info("Spotify search API çağrılıyor...")
+            logger.debug(f"Params - q: '{search_query}', type: 'track', limit: 20, market: 'TR'")
+            search_results = sp.search(
+                q=search_query,
+                type='track',
                 limit=20,
-                country='TR'
+                market='TR'
             )
-            logger.info("Spotify recommendations API'den cevap alındı.")
+            logger.info("Spotify search API'den cevap alındı.")
+            # -------------------------------------------------------
 
         except SpotifyException as e:
-             logger.error(f"Spotify recommendations API hatası (Kullanıcı: {user_id}): {e}")
-             if e.http_status == 401:
-                 return jsonify({"error": "Spotify yetkilendirme hatası. Lütfen tekrar giriş yapın.", "login_required": True}), 401
+             logger.error(f"Spotify search API hatası (Kullanıcı: {user_id}): Status={e.http_status}, Code={e.code}, Msg={e.msg}")
+             if e.http_status == 401 or e.http_status == 403:
+                 session.pop('token_info', None)
+                 session.pop('user_data', None)
+                 return jsonify({"error": "Spotify yetkilendirme hatası. Lütfen tekrar giriş yapın.", "login_required": True}), e.http_status
              elif e.http_status == 429:
                  return jsonify({"error": "Çok fazla istek yapıldı. Lütfen biraz bekleyip tekrar deneyin."}), 429
-             elif e.http_status == 400 or e.http_status == 404:
-                 logger.warning(f"Spotify API {e.http_status} hatası (muhtemelen geçersiz seed): {e.msg}")
-                 error_message = "Öneriler alınırken bir sorun oluştu."
-                 if using_default_seeds:
-                     error_message += " Varsayılan türlerle bile öneri alınamadı."
-                 else:
-                     error_message = "Öneri oluşturmak için yeterli veya geçerli dinleme verisi bulunamadı. Spotify'da daha fazla müzik dinleyin."
-                 return jsonify({"error": error_message}), 400
+             elif e.http_status == 400:
+                 logger.warning(f"Spotify API 400 (Bad Request) hatası (muhtemelen geçersiz arama sorgusu): {e.msg}")
+                 return jsonify({"error": "Arama sorgusu oluşturulurken bir sorun oluştu."}), 400
+             # Search için 404 beklenmez ama yine de kontrol edelim
+             elif e.http_status == 404:
+                 logger.error(f"Spotify Search API 404 (Not Found) hatası alındı! URL: {e.msg}. Bu beklenmedik bir durum.")
+                 return jsonify({"error": "Arama yapılırken bir sorun oluştu (Kaynak bulunamadı - Spotify API sorunu olabilir)."}), 404
              else:
-                 return jsonify({"error": f"Spotify'dan öneri alınamadı: {e.msg}"}), 500
+                 return jsonify({"error": f"Spotify'dan arama sonucu alınamadı.", "details": e.msg}), e.http_status if e.http_status else 500
         except Exception as e:
-             logger.error(f"Spotify önerileri alınırken beklenmedik hata: {e}")
-             return jsonify({"error": "Öneriler alınırken beklenmedik bir sunucu hatası oluştu."}), 500
+             logger.error(f"Spotify arama sonuçları alınırken beklenmedik hata (Kullanıcı: {user_id}): {e}", exc_info=True)
+             return jsonify({"error": "Arama sonuçları alınırken beklenmedik bir sunucu hatası oluştu."}), 500
 
 
-        # 4. Sonucu JSON formatına çevir
+        # 3. Sonucu JSON formatına çevir
         recommendations_json = []
-        if recommendations_data and recommendations_data.get('tracks'):
-            logger.info(f"Spotify'dan {len(recommendations_data['tracks'])} adet öneri bulundu.")
-            for track in recommendations_data['tracks']:
-                if track and track.get('id'):
+        if search_results and search_results.get('tracks') and search_results['tracks'].get('items'):
+            tracks = search_results['tracks']['items']
+            logger.info(f"Spotify aramasından {len(tracks)} adet kişisel sonuç bulundu.")
+            for track in tracks:
+                 if track and track.get('id'):
                     album_art = None
+                    # En uygun boyuttaki resmi seçmek için iyileştirme yapılabilir (örn. 300px civarı)
                     if track.get('album') and isinstance(track['album'].get('images'), list) and track['album']['images']:
-                        album_art = track['album']['images'][0]['url']
+                        # Ortanca boyuttaki resmi veya ilk resmi al
+                        images = track['album']['images']
+                        if len(images) > 1:
+                             album_art = images[1]['url'] # Genellikle 300px
+                        else:
+                             album_art = images[0]['url'] # Tek resim varsa onu al
 
                     recommendations_json.append({
-                        "_id": track['id'],
+                        "id": track['id'],
                         "title": track.get('name', 'N/A'),
-                        "artist": ", ".join([artist.get('name', 'N/A') for artist in track.get('artists', [])]),
+                        "artist": ", ".join([artist.get('name', 'N/A') for artist in track.get('artists', []) if artist]),
                         "album_art_url": album_art,
                         "spotify_url": track.get('external_urls', {}).get('spotify'),
                         "preview_url": track.get('preview_url'),
                     })
-            logger.info(f"Başarıyla {len(recommendations_json)} adet gerçek şarkı önerisi formatlandı.")
+            logger.info(f"Başarıyla {len(recommendations_json)} adet kişisel sonuç formatlandı.")
         else:
-            logger.warning("Spotify API'den geçerli öneri alınamadı veya 'tracks' anahtarı bulunamadı.")
+            logger.warning(f"Kullanıcı {user_id} için Spotify API aramasından geçerli sonuç ('tracks'/'items') alınamadı veya boş döndü.")
 
         # Yanıtı oluştur
-        response_payload = {"recommendations": recommendations_json}
-        if using_default_seeds:
-            response_payload["message"] = "Dinleme geçmişiniz yetersiz olduğu için genel popüler türlere göre öneriler gösterilmektedir."
+        response_payload = {"recommendations": recommendations_json} # Frontend'in hala 'recommendations' beklemesi muhtemel
+        response_payload["message"] = f"Sonuçlar '{query_basis}' baz alınarak yapılan aramaya göre gösterilmektedir."
+        if not recommendations_json:
+             response_payload["message"] += " Bu aramaya uygun sonuç bulunamadı."
+
 
         return jsonify(response_payload)
 
-
     except Exception as e:
-        # Genel hata yakalama
-        logger.exception(f"Öneri oluşturma sırasında kritik hata oluştu (Kullanıcı: {user_id}): {e}")
-        return jsonify({"error": "Öneriler oluşturulurken sunucu hatası oluştu.", "details": str(e)}), 500
+        # Genel Hata Yakalama (Yukarıdaki bloklardan kaçan beklenmedik durumlar için)
+        logger.exception(f"Kişisel arama sırasında kritik hata oluştu (Kullanıcı: {user_id}): {e}")
+        return jsonify({"error": "Sonuçlar oluşturulurken beklenmedik bir sunucu hatası oluştu."}), 500
 
 
+# --- Uygulama Başlatma ---
 if __name__ == '__main__':
-    # Debug modunu ortam değişkeninden almak daha iyi olabilir
+    # Debug modunu ortam değişkeninden almak daha güvenli olabilir
+    # Örn: export FLASK_DEBUG=1 veya set FLASK_DEBUG=1
     # DEBUG_MODE = os.environ.get('FLASK_DEBUG', 'False').lower() in ('true', '1', 't')
-    app.run(debug=True, port=5000)
+    # app.run(debug=DEBUG_MODE, host='0.0.0.0', port=5000) # host='0.0.0.0' ağdaki diğer cihazlardan erişim için
+    logger.info("Flask uygulaması başlatılıyor...")
+    # Geliştirme sırasında debug=True kullanışlıdır, ancak üretimde False olmalıdır.
+    # host='0.0.0.0' yerine '127.0.0.1' kullanmak, sadece yerel makineden erişime izin verir.
+    app.run(debug=True, host='127.0.0.1', port=5000)
+logger.info("Flask uygulaması başarıyla başlatıldı.") # Bu satır app.run() sonrasına gelmez, loglama için farklı bir yöntem gerekir.
