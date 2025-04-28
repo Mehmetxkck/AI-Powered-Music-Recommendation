@@ -11,6 +11,8 @@ from spotipy import SpotifyException
 # from database import Database
 # from models import User # User modeli isteğe bağlı DB kullanımı için kalabilir
 import logging
+from urllib.parse import quote_plus # URL encoding için eklendi
+
 
 app = Flask(__name__)
 
@@ -155,7 +157,9 @@ def callback():
 
     if error:
         logger.error(f"Spotify yetkilendirme hatası: {error}")
-        return redirect(f"{FRONTEND_URL}?error=spotify_auth_error&message={error}")
+        # Hata mesajını URL encode et
+        safe_message = quote_plus(str(error))
+        return redirect(f"{FRONTEND_URL}?error=spotify_auth_error&message={safe_message}")
 
     if not code:
         logger.error("Callback isteğinde 'code' parametresi eksik.")
@@ -177,10 +181,14 @@ def callback():
         return redirect(url_for('fetch_and_store_user_data'))
     except SpotifyException as e:
         logger.error(f"Token değişimi sırasında Spotify API hatası: {e}")
-        return redirect(f"{FRONTEND_URL}?error=token_exchange_error&message={e.msg}")
+        # Hata mesajını URL encode et
+        safe_message = quote_plus(str(e.msg))
+        return redirect(f"{FRONTEND_URL}?error=token_exchange_error&message={safe_message}")
     except Exception as e:
         logger.error(f"Token değişimi sırasında beklenmedik hata: {e}", exc_info=True)
-        return redirect(f"{FRONTEND_URL}?error=token_exchange_error")
+        # Genel hata mesajını URL encode et (içeriği bilinmediği için)
+        safe_message = quote_plus("Bilinmeyen bir hata oluştu.")
+        return redirect(f"{FRONTEND_URL}?error=token_exchange_error&message={safe_message}")
 
 
 @app.route('/fetch_and_store_user_data')
@@ -221,12 +229,16 @@ def fetch_and_store_user_data():
         error_code = "spotify_api_error"
         if e.http_status == 401 or e.http_status == 403:
             error_code = "authentication_required"
-        return redirect(f"{FRONTEND_URL}?error={error_code}&message={e.msg}")
+        # Hata mesajını URL encode et
+        safe_message = quote_plus(str(e.msg))
+        return redirect(f"{FRONTEND_URL}?error={error_code}&message={safe_message}")
     except Exception as e:
         logger.error(f"Kullanıcı verisi çekme sırasında beklenmedik hata: {e}", exc_info=True)
         session.pop('token_info', None)
         session.pop('user_data', None)
-        return redirect(f"{FRONTEND_URL}?error=internal_server_error")
+        # Genel hata mesajını URL encode et
+        safe_message = quote_plus("Sunucuda beklenmedik bir hata oluştu.")
+        return redirect(f"{FRONTEND_URL}?error=internal_server_error&message={safe_message}")
 
 
 @app.route('/user_data')
@@ -258,71 +270,6 @@ def logout():
 
 
 # --- Öneri Rotaları (Search Endpoint'i Kullanarak Güncellendi) ---
-
-@app.route('/initial_recommendations')
-def get_initial_recommendations():
-    logger.info("Başlangıç için rastgele türlere göre arama isteği alındı.")
-    if not sp_cc:
-        logger.error("Client Credentials istemcisi başlatılamadı.")
-        return jsonify({"error": "Sunucu yapılandırma hatası."}), 500
-
-    recommendations_json = []
-    try:
-        if not AVAILABLE_GENRE_SEEDS:
-             logger.error("Kullanılabilir tür listesi boş! Başlangıç araması yapılamıyor.")
-             return jsonify({"error": "Arama için tür listesi bulunamadı."}), 500
-
-        num_seeds = random.randint(1, min(5, len(AVAILABLE_GENRE_SEEDS)))
-        seed_genres = random.sample(AVAILABLE_GENRE_SEEDS, num_seeds)
-        logger.info(f"Başlangıç araması için rastgele türler seçildi: {seed_genres}")
-
-        search_query = f"{random.choice(seed_genres)} music"
-        logger.debug(f"sp_cc.search çağrılıyor, query: '{search_query}'")
-
-        search_results = sp_cc.search(
-            q=search_query,
-            type='track',
-            limit=10,
-            market='TR'
-        )
-        logger.debug("sp_cc.search çağrısı tamamlandı.")
-
-        if search_results and search_results.get('tracks') and search_results['tracks'].get('items'):
-            tracks = search_results['tracks']['items']
-            logger.info(f"Spotify aramasından {len(tracks)} adet başlangıç sonucu bulundu.")
-            for track in tracks:
-                if track and track.get('id'):
-                    album_art = None
-                    if track.get('album') and isinstance(track['album'].get('images'), list) and track['album']['images']:
-                        album_art = track['album']['images'][0]['url']
-
-                    recommendations_json.append({
-                        "id": track['id'],
-                        "title": track.get('name', 'N/A'),
-                        "artist": ", ".join([artist.get('name', 'N/A') for artist in track.get('artists', []) if artist]),
-                        "album_art_url": album_art,
-                        "spotify_url": track.get('external_urls', {}).get('spotify'),
-                        "preview_url": track.get('preview_url'), # Önizleme URL'si eklendi
-                    })
-            logger.info(f"Başarıyla {len(recommendations_json)} adet başlangıç sonucu formatlandı.")
-        else:
-            logger.warning(f"Başlangıç araması için Spotify API'den geçerli 'tracks' veya 'items' verisi alınamadı. Yanıt: {search_results}")
-
-        return jsonify(recommendations_json)
-
-    except SpotifyException as e:
-        logger.error(f"Başlangıç araması sırasında Spotify API hatası: Status={e.http_status}, Code={e.code}, Msg={e.msg}")
-        error_status_code = e.http_status if e.http_status in [400, 401, 403, 429] else 500
-        error_message = "Başlangıç sonuçları alınamadı."
-        if e.http_status == 429: error_message += " (API limit aşıldı)"
-        elif e.http_status == 401 or e.http_status == 403: error_message += " (Yetkilendirme sorunu)"
-        elif e.http_status == 404:
-             logger.error(f"Spotify Search API 404 (Not Found) hatası alındı! URL: {e.msg}. Bu beklenmedik bir durum.")
-             error_message += " (Kaynak bulunamadı - Spotify API sorunu olabilir)"
-        return jsonify({"error": error_message}), error_status_code
-    except Exception as e:
-        logger.error(f"Başlangıç araması sırasında beklenmedik hata: {e}", exc_info=True)
-        return jsonify({"error": "Başlangıç sonuçları alınırken sunucu hatası oluştu."}), 500
 
 
 @app.route('/recommendations', methods=['POST'])
@@ -405,7 +352,9 @@ def get_recommendations_for_user():
             error_status = e.http_status if e.http_status in [401, 403, 429] else 500
             login_req = error_status in [401, 403]
             if login_req: session.pop('token_info', None); session.pop('user_data', None)
-            return jsonify({"error": f"Spotify dinleme geçmişinize erişirken bir sorun oluştu.", "details": e.msg, "login_required": login_req}), error_status
+            # Hata mesajını JSON içinde güvenli hale getir
+            safe_details = quote_plus(str(e.msg))
+            return jsonify({"error": f"Spotify dinleme geçmişinize erişirken bir sorun oluştu.", "details": safe_details, "login_required": login_req}), error_status
         except Exception as e:
             logger.error(f"Arama ipucu verilerini işlerken beklenmedik hata (Kullanıcı: {user_id}): {e}", exc_info=True)
             return jsonify({"error": "Dinleme geçmişiniz işlenirken beklenmedik bir hata oluştu."}), 500
@@ -433,7 +382,9 @@ def get_recommendations_for_user():
              elif status_code == 401 or status_code == 403: error_msg = "Spotify yetkilendirme hatası. Lütfen tekrar giriş yapın."
              elif status_code == 404: error_msg = "Arama yapılırken bir sorun oluştu (Kaynak bulunamadı - Spotify API sorunu olabilir)."
              elif status_code == 429: error_msg = "Çok fazla istek yapıldı. Lütfen biraz bekleyip tekrar deneyin."
-             return jsonify({"error": error_msg, "details": e.msg, "login_required": login_req}), status_code
+             # Hata mesajını JSON içinde güvenli hale getir
+             safe_details = quote_plus(str(e.msg))
+             return jsonify({"error": error_msg, "details": safe_details, "login_required": login_req}), status_code
         except Exception as e:
              logger.error(f"Spotify arama sonuçları alınırken beklenmedik hata (Kullanıcı: {user_id}): {e}", exc_info=True)
              return jsonify({"error": "Arama sonuçları alınırken beklenmedik bir sunucu hatası oluştu."}), 500
@@ -448,6 +399,7 @@ def get_recommendations_for_user():
                     album_art = None
                     if track.get('album') and isinstance(track['album'].get('images'), list) and track['album']['images']:
                         images = track['album']['images']
+                        # Orta boy resmi tercih et (genellikle index 1), yoksa ilkini al
                         album_art = images[1]['url'] if len(images) > 1 else images[0]['url']
 
                     recommendations_json.append({
@@ -485,9 +437,6 @@ def get_user_playlists():
     try:
         sp = spotipy.Spotify(auth=token_info['access_token'])
         playlists = sp.current_user_playlists(limit=50) # Daha fazla playlist için limit artırılabilir
-        # Sadece kullanıcının sahip olduğu veya ortak çalıştığı playlist'leri filtrele (isteğe bağlı)
-        # user_id = session.get('user_data', {}).get('id')
-        # user_playlists = [{"id": pl['id'], "name": pl['name']} for pl in playlists.get('items', []) if pl and pl.get('owner', {}).get('id') == user_id]
         user_playlists = [{"id": pl['id'], "name": pl['name']} for pl in playlists.get('items', []) if pl] # Şimdilik tümünü al
         logger.info(f"{len(user_playlists)} adet playlist bulundu.")
         return jsonify(user_playlists)
@@ -496,7 +445,9 @@ def get_user_playlists():
         status_code = e.http_status if e.http_status in [401, 403] else 500
         login_req = status_code in [401, 403]
         if login_req: session.pop('token_info', None); session.pop('user_data', None)
-        return jsonify({"error": "Playlistler alınamadı.", "login_required": login_req}), status_code
+        # Hata mesajını JSON içinde güvenli hale getir
+        safe_details = quote_plus(str(e.msg))
+        return jsonify({"error": "Playlistler alınamadı.", "details": safe_details, "login_required": login_req}), status_code
     except Exception as e:
         logger.error(f"Playlist alırken beklenmedik hata: {e}", exc_info=True)
         return jsonify({"error": "Sunucu hatası."}), 500
@@ -538,7 +489,9 @@ def add_track_to_playlist():
         if status_code == 403: error_msg = "Bu playlist'e şarkı ekleme izniniz yok veya scope eksik."
         if status_code == 404: error_msg = "Playlist veya şarkı bulunamadı."
         if status_code == 400: error_msg = "Geçersiz istek (örn: şarkı zaten playlist'te olabilir)."
-        return jsonify({"error": error_msg, "login_required": login_req}), status_code
+        # Hata mesajını JSON içinde güvenli hale getir
+        safe_details = quote_plus(str(e.msg))
+        return jsonify({"error": error_msg, "details": safe_details, "login_required": login_req}), status_code
     except Exception as e:
         logger.error(f"Playlist'e eklerken beklenmedik hata: {e}", exc_info=True)
         return jsonify({"error": "Sunucu hatası."}), 500
@@ -583,7 +536,9 @@ def get_user_profile():
          status_code = e.http_status if e.http_status in [401, 403] else 500
          login_req = status_code in [401, 403]
          if login_req: session.pop('token_info', None); session.pop('user_data', None)
-         return jsonify({"error": "Profil verileri alınamadı.", "login_required": login_req}), status_code
+         # Hata mesajını JSON içinde güvenli hale getir
+         safe_details = quote_plus(str(e.msg))
+         return jsonify({"error": "Profil verileri alınamadı.", "details": safe_details, "login_required": login_req}), status_code
     except Exception as e:
          logger.error(f"Profil alırken beklenmedik hata: {e}", exc_info=True)
          return jsonify({"error": "Sunucu hatası."}), 500
