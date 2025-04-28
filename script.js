@@ -122,6 +122,11 @@ function handleLoginUI(userData) {
         if (recommendationsDiv) recommendationsDiv.innerHTML = ''; // Eski önerileri temizle
         if (profileSection) profileSection.style.display = 'none'; // Profil bölümünü gizle
         if (mainContent) mainContent.style.display = 'block'; // Ana içeriği göster
+
+        // Hoş geldiniz mesajını göster (Başlangıç önerileri yerine)
+        if (recommendationsDiv) {
+            recommendationsDiv.innerHTML = `<h2>Merhaba ${userData.display_name || userData.id}! Yeni öneriler almak için 'Önerileri Getir' butonuna tıklayın veya profilinizi görüntüleyin.</h2>`;
+        }
     }
 }
 
@@ -136,8 +141,14 @@ function handleLogoutUI() {
         if (recommendationsDiv) recommendationsDiv.innerHTML = ''; // Önerileri temizle
         if (profileSection) profileSection.innerHTML = ''; // Profil bölümünü temizle
         if (profileSection) profileSection.style.display = 'none';
-        if (mainContent) mainContent.style.display = 'block'; // Ana içeriği göster (başlangıç önerileri için)
-        fetchInitialRecommendations(); // Çıkış yapınca başlangıç önerilerini getir
+        if (mainContent) mainContent.style.display = 'block'; // Ana içeriği göster
+
+        // Başlangıç önerileri yerine hoş geldiniz mesajı
+        if (initialRecommendationsDiv) initialRecommendationsDiv.style.display = 'none'; // Bunu da gizleyelim
+        if (recommendationsDiv) {
+            recommendationsDiv.innerHTML = `<h2>Hoş Geldiniz! Müzik keşfetmeye başlamak için lütfen giriş yapın.</h2>`;
+        }
+        // fetchInitialRecommendations(); // Çıkış yapınca başlangıç önerilerini GETİRME
     }
 }
 
@@ -197,7 +208,7 @@ function attachActionListeners(container) {
     // Ses bitince butonu sıfırla
     container.querySelectorAll('.preview-audio').forEach(audio => {
         audio.onended = (event) => {
-            const button = event.target.previousElementSibling.querySelector('.preview-btn');
+            const button = event.target.closest('.song-card')?.querySelector('.preview-btn'); // Daha güvenli seçici
             if (button) {
                 button.textContent = '▶️';
             }
@@ -205,6 +216,20 @@ function attachActionListeners(container) {
                 currentlyPlayingAudio = null;
             }
         };
+        // Hata durumunda da sıfırla
+        audio.onerror = (event) => {
+            console.error("Audio error:", event.target.error);
+            const button = event.target.closest('.song-card')?.querySelector('.preview-btn');
+            if (button) {
+                button.textContent = '▶️'; // Hata olsa da butonu sıfırla
+                button.disabled = true; // Butonu devre dışı bırak
+                button.title = "Önizleme yüklenemedi";
+            }
+            if (currentlyPlayingAudio === audio) {
+                currentlyPlayingAudio = null;
+            }
+            showError("Bir şarkı önizlemesi yüklenirken hata oluştu.");
+        }
     });
 }
 
@@ -212,7 +237,7 @@ function attachActionListeners(container) {
 
 function handlePreviewClick(event) {
     const button = event.target;
-    const audio = button.closest('.song-card').querySelector('.preview-audio');
+    const audio = button.closest('.song-card')?.querySelector('.preview-audio'); // Güvenli seçici
     const previewUrl = button.dataset.previewUrl;
 
     if (!audio || !previewUrl) return;
@@ -220,11 +245,14 @@ function handlePreviewClick(event) {
     if (currentlyPlayingAudio && currentlyPlayingAudio !== audio) {
         // Başka bir ses çalıyorsa onu durdur
         currentlyPlayingAudio.pause();
+        // Doğrudan src ile aramak yerine daha sağlam bir yöntem (örn. ID ile) daha iyi olabilir
+        // ama şimdilik bu şekilde bırakabiliriz.
         const playingButton = document.querySelector(`button[data-preview-url="${currentlyPlayingAudio.src}"]`);
         if (playingButton) playingButton.textContent = '▶️';
     }
 
     if (audio.paused) {
+        // Oynatmadan önce yüklenmesini bekleme (tarayıcı genellikle halleder)
         audio.play()
             .then(() => {
                 button.textContent = '⏸️';
@@ -233,6 +261,7 @@ function handlePreviewClick(event) {
             .catch(error => {
                 console.error("Önizleme çalınırken hata:", error);
                 showError("Önizleme çalınamadı.");
+                button.textContent = '▶️'; // Hata durumunda butonu sıfırla
                 currentlyPlayingAudio = null; // Hata durumunda sıfırla
             });
     } else {
@@ -249,7 +278,10 @@ async function handleAddToPlaylistClick(event) {
     // 1. Kullanıcı playlistlerini al (cache'lenmişse kullan, yoksa fetch et)
     if (userPlaylists.length === 0) {
         const playlistsData = await fetchApi('/playlists');
-        if (!playlistsData) return; // Hata fetchApi içinde gösterildi
+        if (!playlistsData || !Array.isArray(playlistsData)) { // Daha sağlam kontrol
+            showError("Playlistler alınamadı veya geçersiz formatta.");
+            return;
+        }
         userPlaylists = playlistsData;
     }
 
@@ -258,7 +290,8 @@ async function handleAddToPlaylistClick(event) {
         return;
     }
 
-    // 2. Playlist seçimi için basit bir prompt (daha iyisi modal olurdu)
+    // 2. Playlist seçimi için daha iyi bir UI (Modal) önerilir, şimdilik prompt ile devam
+    // TODO: Burayı daha kullanıcı dostu bir modal ile değiştir.
     let playlistOptions = userPlaylists.map((pl, index) => `${index + 1}: ${pl.name}`).join('\n');
     const choice = prompt(`Şarkıyı hangi playlist'e eklemek istersiniz?\n(Numara girin):\n${playlistOptions}`);
 
@@ -271,6 +304,7 @@ async function handleAddToPlaylistClick(event) {
     }
 
     const selectedPlaylistId = userPlaylists[choiceIndex].id;
+    const selectedPlaylistName = userPlaylists[choiceIndex].name; // Mesaj için ismi al
 
     // 3. Backend'e ekleme isteği gönder
     const result = await fetchApi('/playlist/add', {
@@ -282,7 +316,8 @@ async function handleAddToPlaylistClick(event) {
     });
 
     if (result && result.message) {
-        alert(result.message); // Başarı mesajı
+        // Daha bilgilendirici mesaj
+        alert(`Şarkı "${selectedPlaylistName}" playlistine başarıyla eklendi!`);
     }
     // Hata mesajı fetchApi içinde gösteriliyor
 }
@@ -294,27 +329,48 @@ function handleShareClick(event) {
         return;
     }
 
-    // Basit paylaşım seçenekleri (daha iyisi ikonlarla modal olabilir)
-    const choice = prompt(`Paylaşma Seçenekleri:\n1: Linki Kopyala\n2: Twitter'da Paylaş`);
-
-    switch (choice) {
-        case '1':
-            navigator.clipboard.writeText(spotifyUrl)
-                .then(() => alert('Spotify linki panoya kopyalandı!'))
-                .catch(err => {
-                    console.error('Link kopyalanamadı:', err);
-                    showError('Link otomatik kopyalanamadı. Manuel olarak kopyalayabilirsiniz.');
-                });
-            break;
-        case '2':
-            const tweetText = encodeURIComponent("Şu harika şarkıya bir bak: ");
-            window.open(`https://twitter.com/intent/tweet?url=${encodeURIComponent(spotifyUrl)}&text=${tweetText}`, '_blank');
-            break;
-        default:
-            // Geçersiz seçim veya iptal
-            break;
+    // Modern Paylaşım API'sini kullanmayı dene (varsa)
+    if (navigator.share) {
+        navigator.share({
+            title: 'Spotify Şarkı Önerisi',
+            text: 'Şu harika şarkıya bir bak!',
+            url: spotifyUrl,
+        })
+            .then(() => console.log('Başarılı paylaşım'))
+            .catch((error) => {
+                console.error('Paylaşım hatası:', error)
+                // Paylaşım API hatası veya iptali durumunda kopyalamaya fallback yap
+                copyToClipboard(spotifyUrl);
+            });
+    } else {
+        // Paylaşım API'si yoksa panoya kopyala
+        copyToClipboard(spotifyUrl);
     }
 }
+
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text)
+        .then(() => alert('Spotify linki panoya kopyalandı!'))
+        .catch(err => {
+            console.error('Link kopyalanamadı:', err);
+            showError('Link otomatik kopyalanamadı. Manuel olarak kopyalayabilirsiniz.');
+            // Eski yöntem fallback (güvenli olmayan context'lerde çalışmayabilir)
+            // try {
+            //     const textArea = document.createElement("textarea");
+            //     textArea.value = text;
+            //     document.body.appendChild(textArea);
+            //     textArea.focus();
+            //     textArea.select();
+            //     document.execCommand('copy');
+            //     document.body.removeChild(textArea);
+            //     alert('Spotify linki panoya kopyalandı!');
+            // } catch (execErr) {
+            //     console.error('Fallback kopyalama da başarısız:', execErr);
+            //     showError('Link otomatik kopyalanamadı.');
+            // }
+        });
+}
+
 
 // --- Initialization and Main Logic ---
 
@@ -322,7 +378,7 @@ async function checkLoginStatus() {
     const userData = await fetchApi('/user_data');
     if (userData && !userData.error) {
         handleLoginUI(userData);
-        // Giriş yapılmışsa kişisel önerileri otomatik getir (isteğe bağlı)
+        // Giriş yapılmışsa kişisel önerileri otomatik GETİRME
         // fetchUserRecommendations();
     } else {
         // Giriş yapılmamışsa veya token geçersizse
@@ -330,116 +386,152 @@ async function checkLoginStatus() {
     }
 }
 
+// Başlangıç önerileri fonksiyonu artık çağrılmıyor ama kod olarak kalabilir (ileride gerekirse diye)
+// Veya tamamen silinebilir.
 async function fetchInitialRecommendations() {
-    if (!initialRecommendationsDiv) return;
-    const recommendations = await fetchApi('/initial_recommendations');
-    if (recommendations) {
-        displayTracks(recommendations, initialRecommendationsDiv);
-        initialRecommendationsDiv.style.display = 'block'; // Göster
-    } else {
-        initialRecommendationsDiv.innerHTML = '<p>Başlangıç önerileri alınamadı.</p>';
-        initialRecommendationsDiv.style.display = 'block';
-    }
+    console.log("fetchInitialRecommendations çağrıldı ama artık kullanılmıyor.");
+    // if (!initialRecommendationsDiv) return;
+    // const recommendations = await fetchApi('/initial_recommendations');
+    // if (recommendations) {
+    //     displayTracks(recommendations, initialRecommendationsDiv);
+    //     initialRecommendationsDiv.style.display = 'block'; // Göster
+    // } else {
+    //     initialRecommendationsDiv.innerHTML = '<p>Başlangıç önerileri alınamadı.</p>';
+    //     initialRecommendationsDiv.style.display = 'block';
+    // }
 }
 
 async function fetchUserRecommendations() {
     if (!recommendationsDiv) return;
+    // Mevcut hoş geldiniz mesajını temizle
+    recommendationsDiv.innerHTML = '';
     // POST isteği olduğu için options ekliyoruz
     const response = await fetchApi('/recommendations', { method: 'POST' });
     if (response && response.recommendations) {
         displayTracks(response.recommendations, recommendationsDiv);
         if (response.message) {
-            // Bilgi mesajını göstermek için bir alan eklenebilir
+            // Bilgi mesajını göstermek için bir alan eklenebilir veya konsola yazdırılabilir
             console.info("Öneri Bilgisi:", response.message);
+            // Örnek: Mesajı şarkıların üstüne ekle
+            const infoMsg = document.createElement('p');
+            infoMsg.textContent = response.message;
+            infoMsg.style.textAlign = 'center';
+            infoMsg.style.marginBottom = '10px';
+            recommendationsDiv.prepend(infoMsg);
         }
     } else if (response && response.error) {
         // Hata fetchApi içinde gösterildi, burada sadece div'i temizleyebiliriz
         recommendationsDiv.innerHTML = '<p>Öneriler alınamadı.</p>';
     } else {
-        recommendationsDiv.innerHTML = '<p>Öneriler alınamadı.</p>';
+        // Beklenmedik durum, fetchApi null döndü ama hata göstermedi?
+        recommendationsDiv.innerHTML = '<p>Öneriler alınırken bir sorun oluştu.</p>';
     }
 }
 
 async function fetchAndDisplayProfile() {
     if (!profileSection || !mainContent) return;
 
+    // Profil zaten açıksa kapat
+    if (profileSection.style.display === 'block') {
+        profileSection.style.display = 'none';
+        mainContent.style.display = 'block';
+        return; // Fonksiyondan çık
+    }
+
+    // Profili getir
     const profileData = await fetchApi('/profile');
 
     if (profileData && !profileData.error) {
         profileSection.innerHTML = ''; // Önceki içeriği temizle
 
-        // Kullanıcı Bilgisi
-        const user = profileData.user;
-        const profileHeader = document.createElement('div');
-        profileHeader.classList.add('profile-header');
-        const profilePic = user.images && user.images.length > 0 ? user.images[0].url : 'placeholder.png';
-        profileHeader.innerHTML = `
-            <img src="${profilePic}" alt="Profil Resmi" class="profile-pic">
-            <h2>${user.display_name || user.id}</h2>
-            ${user.email ? `<p>${user.email}</p>` : ''}
-            <p><a href="${user.external_urls?.spotify || '#'}" target="_blank">Spotify Profili</a></p>
-        `;
-        profileSection.appendChild(profileHeader);
-
-        // En Çok Dinlenen Sanatçılar
-        if (profileData.top_artists && profileData.top_artists.length > 0) {
-            const artistsSection = document.createElement('div');
-            artistsSection.classList.add('profile-list-section');
-            artistsSection.innerHTML = '<h3>En Çok Dinlenen Sanatçılar</h3>';
-            const artistsList = document.createElement('div');
-            artistsList.classList.add('profile-list', 'artist-list');
-            profileData.top_artists.forEach(artist => {
-                const artistPic = artist.images && artist.images.length > 0 ? artist.images[2]?.url || artist.images[0].url : 'placeholder.png';
-                artistsList.innerHTML += `
-                    <div class="profile-item">
-                        <a href="${artist.external_urls?.spotify || '#'}" target="_blank">
-                            <img src="${artistPic}" alt="${artist.name}" loading="lazy">
-                            <span>${artist.name}</span>
-                        </a>
-                    </div>
-                `;
-            });
-            artistsSection.appendChild(artistsList);
-            profileSection.appendChild(artistsSection);
+        // --- Profil içeriğini oluşturma fonksiyonları ---
+        function createProfileHeader(user) {
+            const header = document.createElement('div');
+            header.classList.add('profile-header');
+            const profilePic = user.images?.[0]?.url || 'placeholder.png'; // Optional chaining
+            header.innerHTML = `
+                <img src="${profilePic}" alt="Profil Resmi" class="profile-pic">
+                <h2>${user.display_name || user.id}</h2>
+                ${user.email ? `<p><a href="mailto:${user.email}">${user.email}</a></p>` : ''}
+                <p><a href="${user.external_urls?.spotify || '#'}" target="_blank" rel="noopener noreferrer">Spotify Profili</a></p>
+            `;
+            return header;
         }
 
-        // En Çok Dinlenen Şarkılar
-        if (profileData.top_tracks && profileData.top_tracks.length > 0) {
-            const tracksSection = document.createElement('div');
-            tracksSection.classList.add('profile-list-section');
-            tracksSection.innerHTML = '<h3>En Çok Dinlenen Şarkılar</h3>';
-            const tracksList = document.createElement('div');
-            tracksList.classList.add('profile-list', 'track-list');
-            profileData.top_tracks.forEach(track => {
-                const trackPic = track.album?.images && track.album.images.length > 0 ? track.album.images[2]?.url || track.album.images[0].url : 'placeholder.png';
-                tracksList.innerHTML += `
-                    <div class="profile-item">
-                         <a href="${track.external_urls?.spotify || '#'}" target="_blank">
-                            <img src="${trackPic}" alt="${track.album?.name || ''}" loading="lazy">
-                            <span>${track.name}</span>
-                            <small>${track.artists.map(a => a.name).join(', ')}</small>
-                        </a>
-                    </div>
-                `;
+        function createProfileSection(title, items, renderItem) {
+            if (!items || items.length === 0) return null; // Veri yoksa bölüm oluşturma
+
+            const section = document.createElement('div');
+            section.classList.add('profile-list-section');
+            section.innerHTML = `<h3>${title}</h3>`;
+            const list = document.createElement('div');
+            list.classList.add('profile-list'); // Genel sınıf
+            // İçeriğe göre ek sınıf ekle (örn: artist-list, track-list)
+            if (title.toLowerCase().includes('sanatçı')) list.classList.add('artist-list');
+            if (title.toLowerCase().includes('şarkı')) list.classList.add('track-list');
+
+            items.forEach(item => {
+                const itemElement = renderItem(item);
+                if (itemElement) list.appendChild(itemElement);
             });
-            tracksSection.appendChild(tracksList);
-            profileSection.appendChild(tracksSection);
+            section.appendChild(list);
+            return section;
         }
 
-        // En Çok Dinlenen Türler
-        if (profileData.top_genres && profileData.top_genres.length > 0) {
-            const genresSection = document.createElement('div');
-            genresSection.classList.add('profile-list-section');
-            genresSection.innerHTML = '<h3>En Çok Dinlenen Türler</h3>';
-            const genresList = document.createElement('ul'); // Liste olarak gösterelim
-            genresList.classList.add('genre-list');
-            profileData.top_genres.forEach(genrePair => {
-                genresList.innerHTML += `<li>${genrePair[0]}</li>`; // Sadece tür adını göster
-            });
-            genresSection.appendChild(genresList);
-            profileSection.appendChild(genresSection);
+        function renderArtistItem(artist) {
+            const itemDiv = document.createElement('div');
+            itemDiv.classList.add('profile-item');
+            const artistPic = artist.images?.[2]?.url || artist.images?.[0]?.url || 'placeholder.png';
+            itemDiv.innerHTML = `
+                <a href="${artist.external_urls?.spotify || '#'}" target="_blank" rel="noopener noreferrer">
+                    <img src="${artistPic}" alt="${artist.name}" loading="lazy">
+                    <span>${artist.name}</span>
+                </a>
+            `;
+            return itemDiv;
         }
 
+        function renderTrackItem(track) {
+            const itemDiv = document.createElement('div');
+            itemDiv.classList.add('profile-item');
+            const trackPic = track.album?.images?.[2]?.url || track.album?.images?.[0]?.url || 'placeholder.png';
+            itemDiv.innerHTML = `
+                 <a href="${track.external_urls?.spotify || '#'}" target="_blank" rel="noopener noreferrer">
+                    <img src="${trackPic}" alt="${track.album?.name || ''}" loading="lazy">
+                    <span>${track.name}</span>
+                    <small>${track.artists?.map(a => a.name).join(', ') || ''}</small>
+                </a>
+            `;
+            return itemDiv;
+        }
+
+        function createGenreSection(title, genres) {
+            if (!genres || genres.length === 0) return null;
+            const section = document.createElement('div');
+            section.classList.add('profile-list-section');
+            section.innerHTML = `<h3>${title}</h3>`;
+            const list = document.createElement('ul');
+            list.classList.add('genre-list');
+            genres.forEach(genrePair => {
+                const listItem = document.createElement('li');
+                listItem.textContent = genrePair[0]; // Sadece tür adı
+                list.appendChild(listItem);
+            });
+            section.appendChild(list);
+            return section;
+        }
+        // --- Profil içeriğini oluşturma ---
+
+        profileSection.appendChild(createProfileHeader(profileData.user));
+
+        const artistsSection = createProfileSection('En Çok Dinlenen Sanatçılar', profileData.top_artists, renderArtistItem);
+        if (artistsSection) profileSection.appendChild(artistsSection);
+
+        const tracksSection = createProfileSection('En Çok Dinlenen Şarkılar', profileData.top_tracks, renderTrackItem);
+        if (tracksSection) profileSection.appendChild(tracksSection);
+
+        const genresSection = createGenreSection('En Çok Dinlenen Türler', profileData.top_genres);
+        if (genresSection) profileSection.appendChild(genresSection);
 
         // Ana içeriği gizle, profili göster
         mainContent.style.display = 'none';
@@ -448,6 +540,9 @@ async function fetchAndDisplayProfile() {
     } else {
         // Hata fetchApi içinde gösterildi
         showError("Profil bilgileri alınamadı.");
+        // Profili gösterme işlemini geri al (eğer açıksa)
+        profileSection.style.display = 'none';
+        mainContent.style.display = 'block';
     }
 }
 
@@ -455,6 +550,8 @@ async function fetchAndDisplayProfile() {
 
 if (loginButton) {
     loginButton.onclick = () => {
+        // Mevcut konumu veya spesifik bir yönlendirme URL'sini state'e ekleyebiliriz
+        // ama şimdilik basit tutalım.
         window.location.href = `${backendUrl}/login`;
     };
 }
@@ -465,32 +562,43 @@ if (logoutButton) {
         if (currentlyPlayingAudio) {
             currentlyPlayingAudio.pause();
             currentlyPlayingAudio = null;
+            // Butonları da sıfırla (opsiyonel)
+            document.querySelectorAll('.preview-btn').forEach(btn => btn.textContent = '▶️');
         }
         await fetchApi('/logout'); // Backend'de session'ı temizle
         userPlaylists = []; // Playlist cache'ini temizle
-        handleLogoutUI();
+        handleLogoutUI(); // UI'ı güncelle
     };
 }
 
 if (getRecommendationsButton) {
-    getRecommendationsButton.onclick = fetchUserRecommendations;
+    // Öneri almadan önce profilin kapalı olduğundan emin ol
+    getRecommendationsButton.onclick = () => {
+        if (profileSection) profileSection.style.display = 'none';
+        if (mainContent) mainContent.style.display = 'block';
+        fetchUserRecommendations();
+    }
 }
 
 if (showProfileButton) {
-    showProfileButton.onclick = () => {
-        if (profileSection && profileSection.style.display === 'block') {
-            // Profil zaten açıksa ana içeriğe dön
-            profileSection.style.display = 'none';
-            mainContent.style.display = 'block';
-        } else {
-            // Profili getir ve göster
-            fetchAndDisplayProfile();
-        }
-    };
+    // Buton tıklaması doğrudan fetchAndDisplayProfile'ı çağırabilir,
+    // çünkü fonksiyon kendi içinde açık/kapalı durumunu kontrol ediyor.
+    showProfileButton.onclick = fetchAndDisplayProfile;
 }
 
 
 // --- Initial Load ---
 document.addEventListener('DOMContentLoaded', () => {
+    // Sayfa yüklendiğinde URL'de hata parametresi var mı kontrol et (callback'ten dönmüş olabilir)
+    const urlParams = new URLSearchParams(window.location.search);
+    const errorParam = urlParams.get('error');
+    const messageParam = urlParams.get('message');
+
+    if (errorParam) {
+        showError(messageParam || `Bir hata oluştu (${errorParam})`);
+        // Hata parametrelerini URL'den temizle (isteğe bağlı)
+        window.history.replaceState({}, document.title, window.location.pathname);
+    }
+
     checkLoginStatus(); // Sayfa yüklendiğinde giriş durumunu kontrol et
 });
