@@ -408,7 +408,7 @@ def get_recommendations_for_user():
                         "artist": ", ".join([artist.get('name', 'N/A') for artist in track.get('artists', []) if artist]),
                         "album_art_url": album_art,
                         "spotify_url": track.get('external_urls', {}).get('spotify'),
-                        "preview_url": track.get('preview_url'), # Önizleme URL'si eklendi
+                        #"preview_url": track.get('preview_url'), # Önizleme URL'si eklendi
                     })
             logger.info(f"Başarıyla {len(recommendations_json)} adet kişisel sonuç formatlandı.")
         else:
