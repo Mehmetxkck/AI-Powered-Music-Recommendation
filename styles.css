@@ -1,17 +1,27 @@
 /* Genel Stiller */
 :root {
-    /* Koyu Lacivert & Altın Renk Paleti */
-    --primary-bg: #0F172A;         /* Gece Laciverti - Ana Arka Plan */
-    --container-bg: #1E293B;       /* Daha Açık Lacivert - Kart Arka Planı */
-    --accent-mint: #14B8A6;        /* Canlı Nane - Aksiyon Renkleri */
-    --accent-mint-hover: #0D9488;  /* Nane Hover Tonu */
-    --primary-text: #F8FAFC;       /* Saf Beyaza Yakın - Ana Metin */
-    --secondary-text: #94A3B8;     /* Soğuk Açık Gri - İkincil Metin */
-    --border-accent: var(--accent-mint); /* Kenarlıklar için Aksiyon Rengi */
-    --shadow-light: rgba(20, 184, 166, 0.08);  /* Nane Tonlu Hafif Gölge */
-    --shadow-medium: rgba(20, 184, 166, 0.15); /* Nane Tonlu Orta Gölge */
-    --error-red: #EF4444;          /* Dikkat Çekici Açık Kırmızı */
-    --error-bg: rgba(239, 68, 68, 0.1); /* Hata Arka Planı */
+    --primary-bg: #0F172A;
+    /* Gece Laciverti - Ana Arka Plan */
+    --container-bg: #1E293B;
+    /* Daha Açık Lacivert - Kart Arka Planı */
+    --accent-mint: #00d7be;
+    /* Canlı Nane - Aksiyon Renkleri */
+    --accent-mint-hover: #00b6a7;
+    /* Nane Hover Tonu */
+    --primary-text: #F8FAFC;
+    /* Saf Beyaza Yakın - Ana Metin */
+    --secondary-text: #94A3B8;
+    /* Soğuk Açık Gri - İkincil Metin */
+    --border-accent: var(--accent-mint);
+    /* Kenarlıklar için Aksiyon Rengi */
+    --shadow-light: rgba(20, 184, 166, 0.08);
+    /* Nane Tonlu Hafif Gölge */
+    --shadow-medium: rgba(20, 184, 166, 0.15);
+    /* Nane Tonlu Orta Gölge */
+    --error-red: #EF4444;
+    /* Dikkat Çekici Açık Kırmızı */
+    --error-bg: rgba(239, 68, 68, 0.1);
+    /* Hata Arka Planı */
 
     /* Eski Değişkenler (Referans veya Gerekirse) */
     /* --primary-accent: #2c3e50; */
@@ -25,14 +35,24 @@
     /* --secondary-text-color: #6c757d; */
     /* --card-bg: #ffffff; */
     /* --border-color: #ced4da; */
+
+    /* Önceki mesajda tanımlanan altın renkleri (kullanılmıyorsa kaldırılabilir) */
+    --accent-gold: #1fecff;
+    /* Altın Rengi */
+    --accent-gold-hover: #30b8a6;
+    /* Altın Hover */
+    --border-gold: #37cfd4;
+    /* Altın Kenarlık */
 }
 
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     margin: 0;
     padding: 0;
-    background-color: var(--primary-bg); /* Yeni Koyu Lacivert Arka Plan */
-    color: var(--primary-text); /* Yeni Açık Metin Rengi */
+    background-color: var(--primary-bg);
+    /* Yeni Koyu Lacivert Arka Plan */
+    color: var(--primary-text);
+    /* Yeni Açık Metin Rengi */
     line-height: 1.6;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -40,14 +60,17 @@ body {
 
 /* Header Stilleri */
 header {
-    background-color: var(--container-bg); /* Konteynerlerle aynı veya biraz farklı bir lacivert */
+    background-color: var(--container-bg);
+    /* Konteynerlerle aynı veya biraz farklı bir lacivert */
     color: var(--primary-text);
     padding: 1rem 2rem;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2); /* Koyu modda siyah gölge daha iyi olabilir */
-    border-bottom: 1px solid var(--border-gold); /* Altın alt kenarlık */
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    /* Koyu modda siyah gölge daha iyi olabilir */
+    border-bottom: 1px solid var(--border-gold);
+    /* Altın alt kenarlık */
     position: sticky;
     top: 0;
     z-index: 100;
@@ -55,7 +78,8 @@ header {
 
 #user-info {
     font-weight: 500;
-    color: var(--primary-text); /* Beyaz/Açık Gri */
+    color: var(--primary-text);
+    /* Beyaz/Açık Gri */
 }
 
 .controls {
@@ -76,25 +100,65 @@ header {
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    border: 1px solid var(--border-gold); /* Varsayılan Altın Kenarlık */
+    border: 1px solid var(--border-gold);
+    /* Varsayılan Altın Kenarlık */
     transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
     white-space: nowrap;
-    background-color: transparent; /* Başlangıçta şeffaf */
-    color: var(--accent-gold); /* Altın Rengi Metin */
+    /* Buton içeriğinin alt satıra kaymasını engeller */
+}
+
+/* Genel Kontrol ve Giriş Butonları (Şeffaf Arka Plan, Altın Vurgu) */
+.control-button {
+    background-color: transparent;
+    /* Başlangıçta şeffaf */
+    color: var(--accent-gold);
+    /* Altın Rengi Metin */
+    border-color: var(--border-gold);
+}
+
+.control-button:hover {
+    background-color: rgba(212, 175, 55, 0.1);
+    /* Hover'da hafif altın arka plan */
 }
 
 .login-button:hover,
 .control-button:hover,
 .action-button:hover {
-    background-color: rgba(212, 175, 55, 0.1); /* Hover'da hafif altın arka plan */
+    background-color: rgba(212, 175, 55, 0.1);
+    /* Hover'da hafif altın arka plan */
     border-color: var(--accent-gold-hover);
     color: var(--accent-gold-hover);
     box-shadow: 0 2px 4px var(--shadow-light);
 }
 
-.action-button { /* Ana eylem butonu biraz daha belirgin olabilir */
-    background-color: var(--accent-gold); /* Altın Arka Plan */
-    color: var(--primary-bg); /* Koyu Lacivert Metin */
+/* Spotify Giriş Butonu (Nane Vurgulu) */
+.login-button {
+    background-color: var(--accent-mint);
+    /* Nane Arka Plan */
+    color: var(--primary-bg);
+    /* Koyu Metin */
+    border-color: var(--accent-mint);
+    /* Nane Kenarlık */
+}
+
+
+.login-button:hover {
+    background-color: var(--accent-mint-hover);
+    /* Nane Hover Arka Plan */
+    border-color: var(--accent-mint-hover);
+    /* Nane Hover Kenarlık */
+    color: var(--primary-bg);
+    /* Hover'da Metin Rengi Aynı */
+    box-shadow: 0 3px 5px var(--shadow-medium);
+    /* Hafif Gölge */
+}
+
+.action-button {
+    /* Ana eylem butonu biraz daha belirgin olabilir */
+    background-color: var(--accent-gold);
+    /* Altın Arka Plan */
+    color: var(--primary-bg);
+    /* Koyu Lacivert Metin */
     border-color: var(--accent-gold);
     font-size: 1.05em;
     padding: 12px 28px;
@@ -128,10 +192,13 @@ header {
     padding: 25px 30px;
     max-width: 1100px;
     margin: 40px auto;
-    background-color: var(--container-bg); /* Konteyner Arka Planı */
-    box-shadow: 0 1px 8px rgba(0, 0, 0, 0.15); /* Koyu mod gölgesi */
+    background-color: var(--container-bg);
+    /* Konteyner Arka Planı */
+    box-shadow: 0 1px 8px rgba(0, 0, 0, 0.15);
+    /* Koyu mod gölgesi */
     border-radius: 8px;
-    border: 1px solid var(--border-gold); /* Altın Kenarlık */
+    border: 1px solid var(--border-gold);
+    /* Altın Kenarlık */
 }
 
 #recommendation-trigger {
@@ -143,7 +210,8 @@ header {
 #recommendations-section h2,
 .profile-list-section h3 {
     text-align: center;
-    color: var(--accent-gold); /* Altın Rengi Başlıklar */
+    color: var(--accent-gold);
+    /* Altın Rengi Başlıklar */
     margin-bottom: 30px;
     font-weight: 600;
     letter-spacing: 0.5px;
@@ -151,7 +219,8 @@ header {
 
 .profile-list-section h3 {
     text-align: left;
-    border-bottom: 2px solid var(--border-gold); /* Altın Alt Çizgi */
+    border-bottom: 2px solid var(--border-gold);
+    /* Altın Alt Çizgi */
     display: inline-block;
     padding-bottom: 8px;
     margin-bottom: 25px;
@@ -164,26 +233,31 @@ header {
     grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
     gap: 25px;
     padding: 20px;
-    background-color: rgba(0,0,0, 0.1); /* Hafif transparan siyah veya lacivert tonu */
+    background-color: rgba(0, 0, 0, 0.1);
+    /* Hafif transparan siyah veya lacivert tonu */
     border-radius: 6px;
     min-height: 100px;
-    border: 1px solid var(--border-gold); /* Altın Kenarlık */
+    border: 1px solid var(--border-gold);
+    /* Altın Kenarlık */
 }
 
 .recommendations-grid p {
     grid-column: 1 / -1;
     text-align: center;
-    color: var(--secondary-text); /* İkincil Açık Gri Metin */
+    color: var(--secondary-text);
+    /* İkincil Açık Gri Metin */
     margin-top: 25px;
     font-size: 1.1em;
 }
 
 /* Şarkı Kartı Stilleri */
 .song-card {
-    background-color: var(--container-bg); /* Kart Arka Planı */
+    background-color: var(--container-bg);
+    /* Kart Arka Planı */
     border-radius: 6px;
-    box-shadow: 0 2px 4px rgba(0,0,0, 0.1);
-    border: 1px solid var(--border-gold); /* Altın Kenarlık */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--border-gold);
+    /* Altın Kenarlık */
     padding: 20px;
     display: flex;
     flex-direction: column;
@@ -192,8 +266,9 @@ header {
 
 .song-card:hover {
     transform: translateY(-4px);
-    box-shadow: 0 5px 10px rgba(0,0,0, 0.15);
-    border-color: var(--accent-gold-hover); /* Hover'da altın kenarlık */
+    box-shadow: 0 5px 10px rgba(0, 0, 0, 0.15);
+    border-color: var(--accent-gold-hover);
+    /* Hover'da altın kenarlık */
 }
 
 .song-card .album-art {
@@ -205,7 +280,8 @@ header {
     margin: 0 auto 20px auto;
     object-fit: cover;
     display: block;
-    border: 1px solid var(--border-gold); /* Altın Kenarlık */
+    border: 1px solid var(--border-gold);
+    /* Altın Kenarlık */
 }
 
 .song-card .song-info {
@@ -218,12 +294,14 @@ header {
     font-size: 1.15em;
     font-weight: 600;
     margin: 0 0 8px 0;
-    color: var(--accent-gold); /* Altın Rengi Başlık */
+    color: var(--accent-gold);
+    /* Altın Rengi Başlık */
 }
 
 .song-card .artist {
     font-size: 1em;
-    color: var(--primary-text); /* Ana Açık Metin Rengi */
+    color: var(--primary-text);
+    /* Ana Açık Metin Rengi */
     margin: 0;
 }
 
@@ -234,13 +312,15 @@ header {
     gap: 15px;
     margin-top: auto;
     padding-top: 15px;
-    border-top: 1px solid var(--border-gold); /* Altın Üst Kenarlık */
+    border-top: 1px solid var(--border-gold);
+    /* Altın Üst Kenarlık */
 }
 
 .song-card .action-btn {
     background: none;
     border: none;
-    color: var(--secondary-text); /* Başlangıçta Açık Gri */
+    color: var(--secondary-text);
+    /* Başlangıçta Açık Gri */
     font-size: 1.3em;
     cursor: pointer;
     padding: 8px;
@@ -254,13 +334,16 @@ header {
 }
 
 .song-card .action-btn:hover {
-    background-color: rgba(212, 175, 55, 0.15); /* Hafif Altın Arka Plan */
-    color: var(--accent-gold-hover); /* Hover'da Altın Rengi */
+    background-color: rgba(212, 175, 55, 0.15);
+    /* Hafif Altın Arka Plan */
+    color: var(--accent-gold-hover);
+    /* Hover'da Altın Rengi */
 }
 
 .song-card .action-btn.disabled {
     color: var(--secondary-text);
-    opacity: 0.4; /* Daha belirgin solukluk */
+    opacity: 0.4;
+    /* Daha belirgin solukluk */
     cursor: not-allowed;
 }
 
@@ -288,7 +371,8 @@ header {
     text-align: center;
     margin-bottom: 40px;
     padding-bottom: 25px;
-    border-bottom: 1px solid var(--border-gold); /* Altın Alt Kenarlık */
+    border-bottom: 1px solid var(--border-gold);
+    /* Altın Alt Kenarlık */
 }
 
 .profile-pic {
@@ -296,26 +380,30 @@ header {
     height: 130px;
     border-radius: 50%;
     margin-bottom: 20px;
-    border: 4px solid var(--accent-gold); /* Altın Çerçeve */
+    border: 4px solid var(--accent-gold);
+    /* Altın Çerçeve */
     object-fit: cover;
-    box-shadow: 0 4px 8px rgba(0,0,0, 0.2);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 }
 
 .profile-header h2 {
     margin: 10px 0 8px 0;
     font-size: 2em;
-    color: var(--accent-gold); /* Altın Başlık */
+    color: var(--accent-gold);
+    /* Altın Başlık */
     font-weight: 600;
 }
 
 .profile-header p {
     margin: 5px 0;
-    color: var(--primary-text); /* Ana Açık Metin */
+    color: var(--primary-text);
+    /* Ana Açık Metin */
     font-size: 1.1em;
 }
 
 .profile-header a {
-    color: var(--accent-gold); /* Altın Link */
+    color: var(--accent-gold);
+    /* Altın Link */
     text-decoration: none;
     font-weight: 500;
 }
@@ -339,7 +427,8 @@ header {
 
 .profile-item a {
     text-decoration: none;
-    color: var(--primary-text); /* Ana Açık Metin */
+    color: var(--primary-text);
+    /* Ana Açık Metin */
     display: block;
     transition: transform 0.2s ease, opacity 0.2s ease;
     opacity: 0.9;
@@ -358,31 +447,36 @@ header {
     border-radius: 50%;
     margin-bottom: 10px;
     object-fit: cover;
-    box-shadow: 0 3px 6px rgba(0,0,0, 0.15);
-    border: 1px solid var(--border-gold); /* Altın Kenarlık */
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15);
+    border: 1px solid var(--border-gold);
+    /* Altın Kenarlık */
     transition: box-shadow 0.2s ease;
 }
 
 .profile-item a:hover img {
-    box-shadow: 0 5px 10px rgba(0,0,0, 0.2);
+    box-shadow: 0 5px 10px rgba(0, 0, 0, 0.2);
 }
 
 .track-list .profile-item img {
     border-radius: 6px;
 }
 
-.profile-item span { /* Sanatçı/Şarkı adı */
+.profile-item span {
+    /* Sanatçı/Şarkı adı */
     display: block;
     font-weight: 500;
     font-size: 0.95em;
     margin-bottom: 4px;
-    color: var(--primary-text); /* Ana Açık Metin */
+    color: var(--primary-text);
+    /* Ana Açık Metin */
 }
 
-.profile-item small { /* İkincil bilgi (örn. sanatçı adı) */
+.profile-item small {
+    /* İkincil bilgi (örn. sanatçı adı) */
     display: block;
     font-size: 0.85em;
-    color: var(--secondary-text); /* İkincil Açık Gri */
+    color: var(--secondary-text);
+    /* İkincil Açık Gri */
 }
 
 /* Tür Listesi */
@@ -396,13 +490,16 @@ header {
 }
 
 .genre-list li {
-    background-color: rgba(212, 175, 55, 0.1); /* Hafif Altın Arka Plan */
-    color: var(--accent-gold); /* Altın Metin */
+    background-color: rgba(212, 175, 55, 0.1);
+    /* Hafif Altın Arka Plan */
+    color: var(--accent-gold);
+    /* Altın Metin */
     padding: 6px 15px;
     border-radius: 4px;
     font-size: 0.95em;
-    border: 1px solid var(--border-gold); /* Altın Kenarlık */
-    box-shadow: 0 1px 2px rgba(0,0,0, 0.1);
+    border: 1px solid var(--border-gold);
+    /* Altın Kenarlık */
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
 /* Yükleme ve Hata Stilleri */
@@ -416,7 +513,8 @@ header {
 
 #loading i {
     margin-right: 12px;
-    color: var(--accent-gold); /* Altın İkon */
+    color: var(--accent-gold);
+    /* Altın İkon */
 }
 
 #error-message {
@@ -436,10 +534,13 @@ footer {
     text-align: center;
     margin-top: 50px;
     padding: 25px;
-    color: var(--secondary-text); /* İkincil Açık Gri */
+    color: var(--secondary-text);
+    /* İkincil Açık Gri */
     font-size: 0.9em;
-    border-top: 1px solid var(--border-gold); /* Altın Üst Kenarlık */
-    background-color: var(--primary-bg); /* Ana Koyu Arka Plan */
+    border-top: 1px solid var(--border-gold);
+    /* Altın Üst Kenarlık */
+    background-color: var(--primary-bg);
+    /* Ana Koyu Arka Plan */
 }
 
 /* Duyarlılık (Responsive Design) - Genellikle aynı kalabilir */
@@ -495,7 +596,7 @@ footer {
     }
 
     .action-button {
-         padding: 10px 22px;
+        padding: 10px 22px;
     }
 
     #main-content,
@@ -526,7 +627,7 @@ footer {
         gap: 15px;
     }
 
-     .profile-item img {
+    .profile-item img {
         max-width: 90px;
     }
 
@@ -543,4 +644,26 @@ footer {
         padding: 5px 12px;
         font-size: 0.9em;
     }
+}
+
+/* Şarkı Öner Butonuna Özel Stil */
+#get-recommendations-btn {
+    background-color: var(--accent-mint);
+    /* Örneğin canlı nane rengi */
+    color: var(--primary-bg);
+    /* Koyu arka plan rengiyle kontrast */
+    border-color: var(--accent-mint);
+    /* Kenarlık rengini de güncelleyelim */
+}
+
+#get-recommendations-btn:hover {
+    background-color: var(--accent-mint-hover);
+    /* Hover rengi */
+    border-color: var(--accent-mint-hover);
+    color: var(--primary-bg);
+    /* Hover'da metin rengi aynı kalabilir */
+    /* Hover efektlerini .action-button:hover'dan miras almaması için gerekirse transform ve box-shadow'u sıfırlayabilir veya buraya özel tanımlayabilirsiniz */
+    /* Örneğin: */
+    /* transform: translateY(-1px); */
+    /* box-shadow: 0 4px 6px var(--shadow-medium); */
 }
