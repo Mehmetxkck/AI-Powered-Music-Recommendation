@@ -363,12 +363,14 @@ def get_recommendations_for_user():
         search_results = None
         try:
             logger.info("Spotify search API çağrılıyor...")
-            logger.debug(f"Params - q: '{search_query}', type: 'track', limit: 20, market: 'TR'")
+            # Daha fazla çeşitlilik için daha fazla sonuç isteyelim (örn: 50)
+            search_limit = 50
+            logger.debug(f"Params - q: '{search_query}', type: 'track', limit: {search_limit}")
             search_results = sp.search(
                 q=search_query,
                 type='track',
-                limit=20,
-                market='TR'
+                limit=search_limit,
+                #market='TR' # Pazar belirtmek sonuçları iyileştirebilir
             )
             logger.info("Spotify search API'den cevap alındı.")
 
@@ -392,9 +394,14 @@ def get_recommendations_for_user():
         # 3. Sonucu JSON formatına çevir
         recommendations_json = []
         if search_results and search_results.get('tracks') and search_results['tracks'].get('items'):
-            tracks = search_results['tracks']['items']
-            logger.info(f"Spotify aramasından {len(tracks)} adet kişisel sonuç bulundu.")
-            for track in tracks:
+            all_tracks = search_results['tracks']['items']
+            logger.info(f"Spotify aramasından {len(all_tracks)} adet potansiyel sonuç bulundu.")
+            # Alınan sonuçlardan rastgele bir alt küme seçelim (örn: 10 tane)
+            sample_size = min(12, len(all_tracks)) # En fazla 10 veya bulunan şarkı sayısı kadar
+            selected_tracks = random.sample(all_tracks, sample_size) if all_tracks else []
+            logger.info(f"Rastgele {len(selected_tracks)} adet sonuç seçildi.")
+
+            for track in selected_tracks:
                  if track and track.get('id'):
                     album_art = None
                     if track.get('album') and isinstance(track['album'].get('images'), list) and track['album']['images']:
@@ -410,7 +417,7 @@ def get_recommendations_for_user():
                         "spotify_url": track.get('external_urls', {}).get('spotify'),
                         #"preview_url": track.get('preview_url'), # Önizleme URL'si eklendi
                     })
-            logger.info(f"Başarıyla {len(recommendations_json)} adet kişisel sonuç formatlandı.")
+            logger.info(f"Başarıyla {len(recommendations_json)} adet rastgele seçilmiş sonuç formatlandı.")
         else:
             logger.warning(f"Kullanıcı {user_id} için Spotify API aramasından geçerli sonuç ('tracks'/'items') alınamadı veya boş döndü.")
 
