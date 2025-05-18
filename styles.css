@@ -4,9 +4,9 @@
     /* Gece Laciverti - Ana Arka Plan */
     --container-bg: #1E293B;
     /* Daha Açık Lacivert - Kart Arka Planı */
-    --accent-mint: #00d7be;
+    --accent-mint: #00a5d7;
     /* Canlı Nane - Aksiyon Renkleri */
-    --accent-mint-hover: #00b6a7;
+    --accent-mint-hover: #007cb6;
     /* Nane Hover Tonu */
     --primary-text: #F8FAFC;
     /* Saf Beyaza Yakın - Ana Metin */
@@ -23,26 +23,10 @@
     --error-bg: rgba(239, 68, 68, 0.1);
     /* Hata Arka Planı */
 
-    /* Eski Değişkenler (Referans veya Gerekirse) */
-    /* --primary-accent: #2c3e50; */
-    /* --primary-accent-darker: #1a252f; */
-    /* --secondary-accent: #bfa76a; */
-    /* --dark-neutral: #343a40; */
-    /* --white: #ffffff; */
-    /* --off-white-bg: #fdfdfd; */
-    /* --light-neutral: #e9ecef; */
-    /* --text-color: #212529; */
-    /* --secondary-text-color: #6c757d; */
-    /* --card-bg: #ffffff; */
-    /* --border-color: #ced4da; */
-
-    /* Önceki mesajda tanımlanan altın renkleri (kullanılmıyorsa kaldırılabilir) */
     --accent-gold: #1fecff;
-    /* Altın Rengi */
-    --accent-gold-hover: #30b8a6;
-    /* Altın Hover */
+    --accent-gold-hover: #3066b8;
     --border-gold: #37cfd4;
-    /* Altın Kenarlık */
+
 }
 
 body {
@@ -63,7 +47,8 @@ header {
     background-color: var(--container-bg);
     /* Konteynerlerle aynı veya biraz farklı bir lacivert */
     color: var(--primary-text);
-    padding: 1rem 2rem;
+    padding: 10px 20px;
+    /* Birleştirilmiş padding */
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -76,6 +61,17 @@ header {
     z-index: 100;
 }
 
+#app-logo {
+    height: 65px;
+    /* İstediğiniz yüksekliği ayarlayın */
+    width: auto;
+    /* Genişlik otomatik ayarlansın (oranı korumak için) */
+    vertical-align: middle;
+    /* Dikey olarak diğer header elemanlarıyla hizalamaya yardımcı olur */
+    margin-right: 20px;
+    /* Logonun sağındaki elemanlarla arasına boşluk ekler */
+}
+
 #user-info {
     font-weight: 500;
     color: var(--primary-text);
@@ -86,6 +82,23 @@ header {
     display: flex;
     align-items: center;
     gap: 15px;
+}
+
+.spotify-login-button {
+    background-color: var(--accent-mint);
+    /* Nane Arka Plan */
+    color: var(--primary-bg);
+    /* Koyu Metin */
+    border-radius: 6px;
+    padding: 10px 20px;
+    text-decoration: none;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    border: 1px solid var(--border-gold);
+    /* Altın Kenarlık */
 }
 
 /* Buton Stilleri (Koyu Mod ve Altın Vurgu) */
@@ -107,7 +120,7 @@ header {
     /* Buton içeriğinin alt satıra kaymasını engeller */
 }
 
-/* Genel Kontrol ve Giriş Butonları (Şeffaf Arka Plan, Altın Vurgu) */
+/* Genel Kontrol Butonları (Şeffaf Arka Plan, Altın Vurgu) */
 .control-button {
     background-color: transparent;
     /* Başlangıçta şeffaf */
@@ -116,20 +129,24 @@ header {
     border-color: var(--border-gold);
 }
 
+/* .control-button:hover için özel bir kural vardı, aşağıdaki genel hover kuralı bunu kapsayabilir.
+   Eğer .control-button için farklı bir hover davranışı isteniyorsa, bu kural geri eklenebilir.
 .control-button:hover {
-    background-color: rgba(212, 175, 55, 0.1);
-    /* Hover'da hafif altın arka plan */
+    background-color: rgba(212, 175, 55, 0.1); // D4AF37 (altın) RGB'sine göre
 }
+*/
 
-.login-button:hover,
-.control-button:hover,
-.action-button:hover {
+/* Genel Buton Hover Stili (Altın Vurgulu) */
+/* .login-button:hover (nane vurgulu olan hariç), .control-button:hover, .action-button:hover (kendi hover'ı var) */
+.control-button:hover {
+    /* Sadece control-button için bu hover'ı bırakıyoruz, diğerleri kendi özel hover'larına sahip */
     background-color: rgba(212, 175, 55, 0.1);
-    /* Hover'da hafif altın arka plan */
+    /* Altın renginin RGB'si (212, 175, 55) kullanılarak hafif altın arka plan */
     border-color: var(--accent-gold-hover);
     color: var(--accent-gold-hover);
     box-shadow: 0 2px 4px var(--shadow-light);
 }
+
 
 /* Spotify Giriş Butonu (Nane Vurgulu) */
 .login-button {
@@ -233,6 +250,7 @@ header {
     grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
     gap: 25px;
     padding: 20px;
+    /* Grid içine biraz padding eklendi */
     background-color: rgba(0, 0, 0, 0.1);
     /* Hafif transparan siyah veya lacivert tonu */
     border-radius: 6px;
@@ -359,7 +377,8 @@ header {
 
 .song-card .external-link-btn:hover {
     color: var(--accent-gold-hover);
-    background-color: rgba(212, 175, 55, 0.15);
+    background-color: rgba(255, 255, 255, 0.05);
+    /* Hafif beyaz/altın hover */
 }
 
 .song-card .preview-audio {
@@ -491,6 +510,7 @@ header {
 
 .genre-list li {
     background-color: rgba(212, 175, 55, 0.1);
+    /* Altın renginin RGB'si (212, 175, 55) kullanılarak */
     /* Hafif Altın Arka Plan */
     color: var(--accent-gold);
     /* Altın Metin */
@@ -543,7 +563,7 @@ footer {
     /* Ana Koyu Arka Plan */
 }
 
-/* Duyarlılık (Responsive Design) - Genellikle aynı kalabilir */
+/* Duyarlılık (Responsive Design) */
 @media (max-width: 768px) {
     header {
         flex-direction: column;
@@ -662,7 +682,7 @@ footer {
     border-color: var(--accent-mint-hover);
     color: var(--primary-bg);
     /* Hover'da metin rengi aynı kalabilir */
-    /* Hover efektlerini .action-button:hover'dan miras almaması için gerekirse transform ve box-shadow'u sıfırlayabilir veya buraya özel tanımlayabilirsiniz */
+    /* .action-button:hover'dan miras almaması için gerekirse transform ve box-shadow'u sıfırlayabilir veya buraya özel tanımlayabilirsiniz */
     /* Örneğin: */
     /* transform: translateY(-1px); */
     /* box-shadow: 0 4px 6px var(--shadow-medium); */
