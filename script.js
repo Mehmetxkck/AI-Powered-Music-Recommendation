@@ -118,7 +118,7 @@ function handleLoginUI(userData) {
         if (mainContent) mainContent.style.display = 'block';
 
         if (recommendationsDiv) {
-            recommendationsDiv.innerHTML = `<h2>Merhaba ${userData.display_name || userData.id}! Yeni öneriler almak için 'Önerileri Getir' butonuna tıklayın veya profilinizi görüntüleyin.</h2>`;
+            recommendationsDiv.innerHTML = `<h2>Merhaba ${userData.display_name || userData.id}! Yeni öneriler almak için 'Şarkı Öner!' butonuna tıklayın veya profilinizi görüntüleyin.</h2>`;
         }
     }
 }
