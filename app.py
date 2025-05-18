@@ -6,10 +6,6 @@ from flask_cors import CORS
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth, SpotifyClientCredentials # Client Credentials eklendi
 from spotipy import SpotifyException
-# RecommendationEngine ve Database artık doğrudan öneri için kullanılmıyor.
-# from recommendations import RecommendationEngine
-# from database import Database
-# from models import User # User modeli isteğe bağlı DB kullanımı için kalabilir
 import logging
 from urllib.parse import quote_plus # URL encoding için eklendi
 
